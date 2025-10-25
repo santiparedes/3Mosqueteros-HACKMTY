@@ -50,11 +50,13 @@ struct WelcomeView: View {
                                 .frame(width: 90, height: 90)
                                 .colorInvert()
                         }
+                        .shadow(radius: 5)
                         .scaleEffect(isAnimating ? 1.1 : 1.0)
                         .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: isAnimating)
                         .transition(.asymmetric(
                             insertion: .scale(scale: 0.5).combined(with: .opacity),
                             removal: .scale(scale: 0.5).combined(with: .opacity)
+                                
                         ))
                     }
                     
@@ -79,7 +81,7 @@ struct WelcomeView: View {
                 // Action buttons
                 if showButtons {
                     VStack(spacing: 16) {
-                        // Try Face ID again button (if biometric is available)
+                        // Try Face ID button (if biometric is available)
                         if biometricService.isAvailable {
                             Button(action: {
                                 attemptBiometricAuthentication()
@@ -88,7 +90,7 @@ struct WelcomeView: View {
                                     Image(systemName: biometricService.biometricIcon)
                                         .font(.system(size: 20, weight: .semibold))
                                     
-                                    Text("Try \(biometricService.biometricTypeString) Again")
+                                    Text("Try \(biometricService.biometricTypeString)")
                                         .font(.system(size: 18, weight: .semibold))
                                 }
                                 .foregroundColor(.nepBlue)
@@ -126,7 +128,7 @@ struct WelcomeView: View {
                                 isOnboardingComplete = true
                             }
                         }) {
-                            Text("I Am Already a Customer")
+                            Text("I'm Already a Customer")
                                 .font(.system(size: 20, weight: .medium))
                                 .foregroundColor(.white.opacity(0.8))
                                 .bold()
@@ -180,17 +182,10 @@ struct WelcomeView: View {
             }
         }
         
-        // Try Face ID authentication after content is shown
+        // Show buttons for manual authentication (no automatic Face ID)
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            attemptBiometricAuthentication()
-        }
-        
-        // Show buttons as fallback (only if biometric fails)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) {
-            if !biometricService.isAuthenticated {
-                withAnimation(.easeInOut(duration: 0.8)) {
-                    showButtons = true
-                }
+            withAnimation(.easeInOut(duration: 0.8)) {
+                showButtons = true
             }
         }
     }
