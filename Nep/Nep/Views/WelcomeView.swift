@@ -8,6 +8,9 @@ struct WelcomeView: View {
     @State private var showButtons = false
     @State private var navigateToMain = false
     @Binding var isLoggedIn: Bool
+    @Binding var isOnboardingComplete: Bool
+    
+    @StateObject private var biometricService = BiometricAuthService.shared
     
     var body: some View {
         ZStack {
@@ -76,6 +79,30 @@ struct WelcomeView: View {
                 // Action buttons
                 if showButtons {
                     VStack(spacing: 16) {
+                        // Try Face ID again button (if biometric is available)
+                        if biometricService.isAvailable {
+                            Button(action: {
+                                attemptBiometricAuthentication()
+                            }) {
+                                HStack(spacing: 12) {
+                                    Image(systemName: biometricService.biometricIcon)
+                                        .font(.system(size: 20, weight: .semibold))
+                                    
+                                    Text("Try \(biometricService.biometricTypeString) Again")
+                                        .font(.system(size: 18, weight: .semibold))
+                                }
+                                .foregroundColor(.nepBlue)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 56)
+                                .background(Color.nepBlue.opacity(0.1))
+                                .cornerRadius(28)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 28)
+                                        .stroke(Color.nepBlue, lineWidth: 2)
+                                )
+                            }
+                        }
+                        
                         Button(action: {
                             // Navigate to registration
                             withAnimation(.easeInOut(duration: 0.5)) {
@@ -93,9 +120,10 @@ struct WelcomeView: View {
                         }
                         
                         Button(action: {
-                            // Navigate to login
+                            // Navigate to login - go directly to main view
                             withAnimation(.easeInOut(duration: 0.5)) {
                                 isLoggedIn = true
+                                isOnboardingComplete = true
                             }
                         }) {
                             Text("I Am Already a Customer")
@@ -115,6 +143,15 @@ struct WelcomeView: View {
         }
         .onAppear {
             startAnimationSequence()
+        }
+        .onChange(of: biometricService.isAuthenticated) { isAuthenticated in
+            if isAuthenticated {
+                // Face ID successful, go directly to main view
+                withAnimation(.easeInOut(duration: 0.5)) {
+                    isLoggedIn = true
+                    isOnboardingComplete = true
+                }
+            }
         }
     }
     
@@ -143,10 +180,44 @@ struct WelcomeView: View {
             }
         }
         
-        // Show buttons last
+        // Try Face ID authentication after content is shown
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            attemptBiometricAuthentication()
+        }
+        
+        // Show buttons as fallback (only if biometric fails)
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) {
+            if !biometricService.isAuthenticated {
+                withAnimation(.easeInOut(duration: 0.8)) {
+                    showButtons = true
+                }
+            }
+        }
+    }
+    
+    private func attemptBiometricAuthentication() {
+        guard biometricService.isAvailable else {
+            print("🔐 BIOMETRIC: Not available, showing buttons")
             withAnimation(.easeInOut(duration: 0.8)) {
                 showButtons = true
+            }
+            return
+        }
+        
+        print("🔐 BIOMETRIC: Attempting \(biometricService.biometricTypeString) authentication...")
+        
+        biometricService.authenticate { [self] success, error in
+            DispatchQueue.main.async {
+                if success {
+                    print("✅ BIOMETRIC: Authentication successful!")
+                    // The onChange modifier will handle navigation
+                } else {
+                    print("❌ BIOMETRIC: Authentication failed: \(error ?? "Unknown error")")
+                    // Show buttons as fallback
+                    withAnimation(.easeInOut(duration: 0.8)) {
+                        showButtons = true
+                    }
+                }
             }
         }
     }
@@ -178,6 +249,6 @@ struct GridPattern: View {
 }
 
 #Preview {
-    WelcomeView(isLoggedIn: .constant(false))
+    WelcomeView(isLoggedIn: .constant(false), isOnboardingComplete: .constant(false))
         .preferredColorScheme(.dark)
 }

@@ -15,18 +15,22 @@ class GeminiAIService: ObservableObject {
     
     // MARK: - INE Document Analysis
     func analyzeINEDocument(_ ocrResults: OCRResults) async -> INEAnalysis {
+        print("🤖 GEMINI: Starting INE document analysis...")
+        
         guard APIConfig.isGeminiConfigured else {
-            print("Gemini API not configured. Using fallback analysis.")
+            print("❌ GEMINI: API not configured. Using fallback analysis.")
             return createFallbackAnalysis(ocrResults)
         }
         
+        print("✅ GEMINI: API configured, sending request...")
         let prompt = createINEAnalysisPrompt(ocrResults)
         
         do {
             let response = try await sendGeminiRequest(prompt: prompt)
+            print("✅ GEMINI: Analysis completed successfully!")
             return parseINEAnalysis(response)
         } catch {
-            print("Error analyzing INE document: \(error)")
+            print("❌ GEMINI: Error analyzing INE document: \(error)")
             return INEAnalysis(
                 isValid: false,
                 confidence: 0.0,
@@ -39,13 +43,16 @@ class GeminiAIService: ObservableObject {
     
     // MARK: - Onboarding Conversation
     func generateOnboardingGuidance(step: OnboardingStep, ocrResults: OCRResults) async -> String {
+        print("🤖 GEMINI: Generating guidance for step: \(step.description)")
+        
         let prompt = createOnboardingPrompt(step: step, ocrResults: ocrResults)
         
         do {
             let response = try await sendGeminiRequest(prompt: prompt)
+            print("✅ GEMINI: Generated guidance: \(response.prefix(50))...")
             return response
         } catch {
-            print("Error generating onboarding guidance: \(error)")
+            print("❌ GEMINI: Error generating guidance: \(error)")
             return getFallbackMessage(for: step)
         }
     }

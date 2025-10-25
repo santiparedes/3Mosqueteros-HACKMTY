@@ -9,6 +9,7 @@ struct WalletView: View {
     @State private var showSendMoney = false
     @State private var showCardDetails = false
     @State private var selectedCard: Card?
+    @State private var isBalanceVisible = true
     
     var body: some View {
         ZStack {
@@ -21,7 +22,7 @@ struct WalletView: View {
                     WalletHeaderView(userManager: userManager)
                     
                     // Total Balance Card
-                    TotalBalanceCard(balance: getTotalBalance())
+                    TotalBalanceCard(balance: getTotalBalance(), isVisible: $isBalanceVisible)
                     
                     // Quick Actions
                     QuickActionsView(
@@ -118,7 +119,7 @@ struct WalletHeaderView: View {
 // MARK: - Total Balance Card
 struct TotalBalanceCard: View {
     let balance: Double
-    @State private var isBalanceHidden = false
+    @Binding var isVisible: Bool
     
     var body: some View {
         VStack(spacing: 16) {
@@ -130,22 +131,22 @@ struct TotalBalanceCard: View {
                 Spacer()
                 
                 Button(action: {
-                    isBalanceHidden.toggle()
+                    isVisible.toggle()
                 }) {
-                    Image(systemName: isBalanceHidden ? "eye.slash" : "eye")
+                    Image(systemName: isVisible ? "eye" : "eye.slash")
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.nepTextSecondary)
                 }
             }
             
             HStack {
-                if isBalanceHidden {
+                if !isVisible {
                     // Show dots like password field, keeping the $ sign
                     Text("$ ••••••")
                         .font(.system(size: 32, weight: .bold))
                         .foregroundColor(.nepTextLight)
                 } else {
-                    Text("$ \(String(format: "%.2f", balance))")
+                    Text("$ \(formatBalance(balance))")
                         .font(.system(size: 32, weight: .bold))
                         .foregroundColor(.nepTextLight)
                 }
@@ -153,7 +154,7 @@ struct TotalBalanceCard: View {
                 Spacer()
                 
                 // Balance trend indicator (only show when balance is visible)
-                if !isBalanceHidden {
+                if isVisible {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.up.right")
                             .font(.system(size: 12, weight: .semibold))
@@ -179,6 +180,14 @@ struct TotalBalanceCard: View {
                         .stroke(Color.nepBlue.opacity(0.2), lineWidth: 1)
                 )
         )
+    }
+    
+    private func formatBalance(_ balance: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = 2
+        formatter.maximumFractionDigits = 2
+        return formatter.string(from: NSNumber(value: balance)) ?? "0.00"
     }
 }
 
@@ -281,6 +290,29 @@ struct CardPreviewView: View {
     let card: Card
     let onTap: () -> Void
     
+    private var cardGradient: LinearGradient {
+        switch card.type.lowercased() {
+        case "credit":
+            return LinearGradient(
+                colors: [Color(red: 0.2, green: 0.1, blue: 0.4), Color(red: 0.4, green: 0.2, blue: 0.6)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        case "debit":
+            return LinearGradient(
+                colors: [Color(red: 0.1, green: 0.3, blue: 0.2), Color(red: 0.2, green: 0.5, blue: 0.3)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        default:
+            return LinearGradient(
+                colors: [Color(red: 0.1, green: 0.1, blue: 0.2), Color(red: 0.2, green: 0.2, blue: 0.4)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+    }
+    
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 12) {
@@ -314,13 +346,7 @@ struct CardPreviewView: View {
             }
             .padding(16)
             .frame(width: 200, height: 120)
-            .background(
-                LinearGradient(
-                    gradient: Gradient(colors: [Color.nepBlue, Color.nepDarkBlue]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
+            .background(cardGradient)
             .cornerRadius(16)
         }
     }

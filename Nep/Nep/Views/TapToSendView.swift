@@ -1706,7 +1706,6 @@ struct ConnectionConfirmationView: View {
     @State private var isPulsing = false
     @State private var connectionEstablished = false
     @State private var showSuccessAnimation = false
-    @State private var showDebugInfo = false
     
     var body: some View {
         NavigationView {
@@ -1763,27 +1762,6 @@ struct ConnectionConfirmationView: View {
                             .multilineTextAlignment(.center)
                             .padding(.horizontal)
                         
-                        // Debug info
-                        if !connectionEstablished {
-                            VStack(spacing: 8) {
-                                Text("Status: \(tapToSendService.isAdvertising ? "Advertising" : "Not Advertising")")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(.orange)
-                                
-                                if tapToSendService.connectedPeers.count > 0 {
-                                    Text("Found \(tapToSendService.connectedPeers.count) device(s)")
-                                        .font(.system(size: 14, weight: .medium))
-                                        .foregroundColor(.blue)
-                                }
-                                
-                                Button("Show Debug Info") {
-                                    showDebugInfo.toggle()
-                                }
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.blue)
-                            }
-                            .padding(.top, 8)
-                        }
                     }
                 }
                 
@@ -1862,184 +1840,9 @@ struct ConnectionConfirmationView: View {
                 connectionEstablished = isConnected
             }
         }
-        .sheet(isPresented: $showDebugInfo) {
-            DebugInfoView()
-        }
     }
 }
 
-// MARK: - Debug Info View
-struct DebugInfoView: View {
-    @StateObject private var tapToSendService = TapToSendService.shared
-    @Environment(\.dismiss) private var dismiss
-    
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    serviceStatusSection
-                    connectedPeersSection
-                    debugMessagesSection
-                    actionButtonsSection
-                }
-                .padding()
-            }
-            .navigationTitle("Debug Info")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                }
-            }
-        }
-    }
-    
-    private var serviceStatusSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Service Status")
-                .font(.headline)
-                .foregroundColor(.primary)
-            
-            HStack {
-                Text("Advertising:")
-                Spacer()
-                Text(tapToSendService.isAdvertising ? "✅ Yes" : "❌ No")
-                    .foregroundColor(tapToSendService.isAdvertising ? .green : .red)
-            }
-            
-            HStack {
-                Text("Browsing:")
-                Spacer()
-                Text(tapToSendService.isBrowsing ? "✅ Yes" : "❌ No")
-                    .foregroundColor(tapToSendService.isBrowsing ? .green : .red)
-            }
-            
-            HStack {
-                Text("Connected:")
-                Spacer()
-                Text(tapToSendService.isConnected ? "✅ Yes" : "❌ No")
-                    .foregroundColor(tapToSendService.isConnected ? .green : .red)
-            }
-            
-            HStack {
-                Text("Connected Peers:")
-                Spacer()
-                Text("\(tapToSendService.connectedPeers.count)")
-                    .foregroundColor(.blue)
-            }
-        }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
-    }
-    
-    @ViewBuilder
-    private var connectedPeersSection: some View {
-        if !tapToSendService.connectedPeers.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Connected Devices")
-                    .font(.headline)
-                    .foregroundColor(.primary)
-                
-                ForEach(tapToSendService.connectedPeers, id: \.displayName) { peer in
-                    HStack {
-                        Image(systemName: "iphone")
-                            .foregroundColor(.blue)
-                        Text(peer.displayName)
-                            .font(.system(size: 16, weight: .medium))
-                        Spacer()
-                        Text("Connected")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.green)
-                    }
-                    .padding(.vertical, 4)
-                }
-            }
-            .padding()
-            .background(Color(.systemGray6))
-            .cornerRadius(12)
-        }
-    }
-    
-    private var debugMessagesSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Recent Debug Messages")
-                .font(.headline)
-                .foregroundColor(.primary)
-            
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 4) {
-                    ForEach(Array(tapToSendService.debugMessages.suffix(20).enumerated()), id: \.offset) { index, message in
-                        Text(message)
-                            .font(.system(size: 12, design: .monospaced))
-                            .foregroundColor(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-            }
-            .frame(maxHeight: 200)
-        }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
-    }
-    
-    private var actionButtonsSection: some View {
-        VStack(spacing: 12) {
-            Button("Reset Service") {
-                tapToSendService.resetService()
-            }
-            .font(.system(size: 16, weight: .semibold))
-            .foregroundColor(.white)
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(Color.orange)
-            .cornerRadius(12)
-            
-            Button("Force Start Advertising") {
-                tapToSendService.startAdvertising()
-            }
-            .font(.system(size: 16, weight: .semibold))
-            .foregroundColor(.white)
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(Color.blue)
-            .cornerRadius(12)
-            
-            Button("Force Restart Browsing") {
-                tapToSendService.forceRestartBrowsing()
-            }
-            .font(.system(size: 16, weight: .semibold))
-            .foregroundColor(.white)
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(Color.green)
-            .cornerRadius(12)
-            
-            Button("Test Advertiser Delegate") {
-                tapToSendService.testAdvertiserDelegate()
-            }
-            .font(.system(size: 16, weight: .semibold))
-            .foregroundColor(.white)
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(Color.purple)
-            .cornerRadius(12)
-            
-            Button("Send Pending Payment") {
-                tapToSendService.sendPendingPaymentToConnectedPeers()
-            }
-            .font(.system(size: 16, weight: .semibold))
-            .foregroundColor(.white)
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(Color.orange)
-            .cornerRadius(12)
-        }
-    }
-}
 
 // MARK: - Payment Sent Success View
 struct PaymentSentSuccessView: View {

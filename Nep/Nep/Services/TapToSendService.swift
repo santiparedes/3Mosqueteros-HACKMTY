@@ -27,7 +27,6 @@ class TapToSendService: NSObject, ObservableObject {
     @Published var receivedPaymentRequest: PaymentRequest?
     @Published var showPaymentRequest = false
     @Published var isConnected = false
-    @Published var debugMessages: [String] = []
     @Published var showPermissionAlert = false
     @Published var permissionAlertMessage = ""
     
@@ -44,17 +43,13 @@ class TapToSendService: NSObject, ObservableObject {
         super.init()
         setupMultipeerConnectivity()
         setupPermissionMonitoring()
-        addDebugMessage("TapToSendService initialized")
     }
     
     private func setupMultipeerConnectivity() {
-        addDebugMessage("Setting up MultipeerConnectivity with service type: \(serviceType)")
-        addDebugMessage("My peer ID: \(myPeerID.displayName)")
         
         // Create session with required encryption for better compatibility
         session = MCSession(peer: myPeerID, securityIdentity: nil, encryptionPreference: .required)
         session.delegate = self
-        addDebugMessage("✅ MCSession created with peer: \(myPeerID.displayName)")
         
         // Create advertiser with same peer ID and session
         let discoveryInfo = [
@@ -65,17 +60,11 @@ class TapToSendService: NSObject, ObservableObject {
         ]
         advertiser = MCNearbyServiceAdvertiser(peer: myPeerID, discoveryInfo: discoveryInfo, serviceType: serviceType)
         advertiser.delegate = self
-        addDebugMessage("✅ MCNearbyServiceAdvertiser created")
-        addDebugMessage("🔍 Advertiser delegate set: \(advertiser.delegate != nil ? "✅ YES" : "❌ NO")")
-        addDebugMessage("🔍 Advertiser peer ID: \(advertiser.myPeerID.displayName)")
-        addDebugMessage("🔍 Advertiser service type: \(serviceType)")
         
         // Create browser with same peer ID
         browser = MCNearbyServiceBrowser(peer: myPeerID, serviceType: serviceType)
         browser.delegate = self
-        addDebugMessage("✅ MCNearbyServiceBrowser created")
         
-        addDebugMessage("MultipeerConnectivity setup complete - all components use same peer ID")
     }
     
     private func setupPermissionMonitoring() {
@@ -86,11 +75,8 @@ class TapToSendService: NSObject, ObservableObject {
         networkMonitor = NWPathMonitor()
         networkMonitor?.pathUpdateHandler = { [weak self] path in
             DispatchQueue.main.async {
-                self?.addDebugMessage("Network status: \(path.status)")
                 if path.status == .satisfied {
-                    self?.addDebugMessage("Network is available")
                 } else {
-                    self?.addDebugMessage("Network is not available")
                 }
             }
         }
@@ -102,13 +88,11 @@ class TapToSendService: NSObject, ObservableObject {
     }
     
     private func requestLocalNetworkPermission() {
-        addDebugMessage("🔐 Requesting Local Network permission...")
         
         // Create a temporary network monitor to trigger permission request
         let tempMonitor = NWPathMonitor()
         tempMonitor.pathUpdateHandler = { [weak self] path in
             DispatchQueue.main.async {
-                self?.addDebugMessage("🔐 Local Network permission request triggered")
                 // Stop the temporary monitor after permission request
                 tempMonitor.cancel()
             }
@@ -124,7 +108,6 @@ class TapToSendService: NSObject, ObservableObject {
     }
     
     private func triggerLocalNetworkPermission() {
-        addDebugMessage("🔐 Attempting to trigger Local Network permission dialog...")
         
         // Try to create a local network connection to trigger permission
         let connection = NWConnection(host: "127.0.0.1", port: 8080, using: .tcp)
@@ -132,11 +115,11 @@ class TapToSendService: NSObject, ObservableObject {
             DispatchQueue.main.async {
                 switch state {
                 case .ready:
-                    self?.addDebugMessage("🔐 Local Network permission may have been granted")
+                    break
                 case .failed(let error):
-                    self?.addDebugMessage("🔐 Local Network permission check: \(error)")
+                    break
                 case .cancelled:
-                    self?.addDebugMessage("🔐 Local Network permission check cancelled")
+                    break
                 default:
                     break
                 }
@@ -151,19 +134,6 @@ class TapToSendService: NSObject, ObservableObject {
         }
     }
     
-    private func addDebugMessage(_ message: String) {
-        let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .medium)
-        let debugMessage = "[\(timestamp)] \(message)"
-        print("🔍 TapToSend Debug: \(debugMessage)")
-        
-        DispatchQueue.main.async {
-            self.debugMessages.append(debugMessage)
-            // Keep only last 50 messages
-            if self.debugMessages.count > 50 {
-                self.debugMessages.removeFirst()
-            }
-        }
-    }
     
     private func checkPermissions() -> Bool {
         var hasAllPermissions = true
@@ -172,32 +142,27 @@ class TapToSendService: NSObject, ObservableObject {
         if let bluetoothManager = bluetoothManager {
             switch bluetoothManager.state {
             case .poweredOn:
-                addDebugMessage("✅ Bluetooth is powered on")
+                break
             case .poweredOff:
-                addDebugMessage("❌ Bluetooth is powered off")
                 hasAllPermissions = false
                 showPermissionAlert(message: "Bluetooth is turned off. Please enable Bluetooth in Settings to use tap-to-send.")
             case .unauthorized:
-                addDebugMessage("❌ Bluetooth permission denied")
                 hasAllPermissions = false
                 showPermissionAlert(message: "Bluetooth permission is required for tap-to-send. Please grant permission in Settings.")
             case .unsupported:
-                addDebugMessage("❌ Bluetooth not supported")
                 hasAllPermissions = false
                 showPermissionAlert(message: "Bluetooth is not supported on this device.")
             case .resetting:
-                addDebugMessage("⚠️ Bluetooth is resetting")
+                break
             case .unknown:
-                addDebugMessage("⚠️ Bluetooth state unknown")
+                break
             @unknown default:
-                addDebugMessage("⚠️ Unknown Bluetooth state")
+                break
             }
         }
         
         // Check Local Network permission (iOS 14+)
         if #available(iOS 14.0, *) {
-            addDebugMessage("⚠️ Local Network permission may be required for iOS 14+")
-            addDebugMessage("💡 If connection fails, check Settings > Privacy & Security > Local Network")
             
             // Try to detect Local Network permission status
             checkLocalNetworkPermissionStatus()
@@ -207,7 +172,6 @@ class TapToSendService: NSObject, ObservableObject {
     }
     
     private func checkLocalNetworkPermissionStatus() {
-        addDebugMessage("🔍 Checking Local Network permission status...")
         
         // Create a test connection to check permission
         let testConnection = NWConnection(host: "127.0.0.1", port: 8080, using: .tcp)
@@ -215,15 +179,15 @@ class TapToSendService: NSObject, ObservableObject {
             DispatchQueue.main.async {
                 switch state {
                 case .ready:
-                    self?.addDebugMessage("✅ Local Network permission appears to be granted")
+                    break
                 case .failed(let error):
                     if let nsError = error as NSError?, nsError.code == -72008 {
-                        self?.addDebugMessage("❌ Local Network permission is DENIED")
+                        // Local Network permission denied
                     } else {
-                        self?.addDebugMessage("🔍 Local Network test failed (expected): \(error)")
+                        // Other network error
                     }
                 case .cancelled:
-                    self?.addDebugMessage("🔍 Local Network test cancelled")
+                    break
                 default:
                     break
                 }
@@ -246,7 +210,6 @@ class TapToSendService: NSObject, ObservableObject {
     }
     
     private func forceLocalNetworkPermissionRequest() {
-        addDebugMessage("🔐 Forcing Local Network permission request...")
         
         // Try multiple methods to trigger Local Network permission
         let methods = [
@@ -256,18 +219,17 @@ class TapToSendService: NSObject, ObservableObject {
         ]
         
         for (method, host, port, params) in methods {
-            addDebugMessage("🔐 Trying \(method) to trigger permission...")
             
             let connection = NWConnection(host: NWEndpoint.Host(host), port: NWEndpoint.Port(integerLiteral: UInt16(port)), using: params)
             connection.stateUpdateHandler = { [weak self] state in
                 DispatchQueue.main.async {
                     switch state {
                     case .ready:
-                        self?.addDebugMessage("🔐 \(method) - Local Network permission granted!")
+                        break
                     case .failed(let error):
-                        self?.addDebugMessage("🔐 \(method) - Permission check failed: \(error)")
+                        break
                     case .cancelled:
-                        self?.addDebugMessage("🔐 \(method) - Permission check cancelled")
+                        break
                     default:
                         break
                     }
@@ -284,7 +246,6 @@ class TapToSendService: NSObject, ObservableObject {
     }
     
     private func recreateMultipeerSession() {
-        addDebugMessage("🔄 Recreating MultipeerConnectivity session...")
         
         // Stop current operations
         if isBrowsing {
@@ -302,7 +263,6 @@ class TapToSendService: NSObject, ObservableObject {
         isConnected = false
         
         // Recreate session with same myPeerID (already unique)
-        addDebugMessage("🔄 Recreating with peer ID: \(myPeerID.displayName)")
         
         session = MCSession(peer: myPeerID, securityIdentity: nil, encryptionPreference: .required)
         session.delegate = self
@@ -320,14 +280,12 @@ class TapToSendService: NSObject, ObservableObject {
         browser = MCNearbyServiceBrowser(peer: myPeerID, serviceType: serviceType)
         browser.delegate = self
         
-        addDebugMessage("✅ MultipeerConnectivity session recreated")
     }
     
     // MARK: - Public Methods
     
     func startAdvertising() {
         guard !isAdvertising else { 
-            addDebugMessage("⚠️ Already advertising")
             return 
         }
         
@@ -335,26 +293,15 @@ class TapToSendService: NSObject, ObservableObject {
         forceLocalNetworkPermissionRequest()
         
         guard checkPermissions() else {
-            addDebugMessage("❌ Cannot start advertising - missing permissions")
             return
         }
         
-        addDebugMessage("🚀 Starting advertising for tap-to-send")
-        addDebugMessage("🔍 My peer ID: \(myPeerID.displayName)")
-        addDebugMessage("🔍 Service type: \(serviceType)")
-        addDebugMessage("🔍 Session state: \(session.connectedPeers.count) connected peers")
         
         // Ensure advertising starts on main thread
         DispatchQueue.main.async {
-            self.addDebugMessage("🔍 About to start advertising...")
-            self.addDebugMessage("🔍 Advertiser delegate before start: \(self.advertiser.delegate != nil ? "✅ SET" : "❌ NOT SET")")
-            self.addDebugMessage("🔍 Advertiser peer ID: \(self.advertiser.myPeerID.displayName)")
-            self.addDebugMessage("🔍 Advertiser service type: \(self.serviceType)")
             
             self.advertiser.startAdvertisingPeer()
             self.isAdvertising = true
-            self.addDebugMessage("✅ Advertising started successfully")
-            self.addDebugMessage("🔍 Advertiser delegate after start: \(self.advertiser.delegate != nil ? "✅ STILL SET" : "❌ LOST")")
             
             // Add periodic status check
             self.startAdvertisingStatusCheck()
@@ -367,12 +314,9 @@ class TapToSendService: NSObject, ObservableObject {
     private func startAdvertisingStatusCheck() {
         Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { timer in
             if self.isAdvertising {
-                self.addDebugMessage("🔍 Advertising status check - still advertising")
-                self.addDebugMessage("🔍 Session connected peers: \(self.session.connectedPeers.count)")
                 
                 // Connection watchdog - restart if no connections after 30 seconds
                 if self.session.connectedPeers.isEmpty {
-                    self.addDebugMessage("⏳ No connections yet, continuing to advertise...")
                 }
             } else {
                 timer.invalidate()
@@ -381,18 +325,15 @@ class TapToSendService: NSObject, ObservableObject {
     }
     
     private func startConnectionWatchdog() {
-        addDebugMessage("🕐 Starting connection watchdog (30s timeout)")
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 30.0) {
             if self.session.connectedPeers.isEmpty && self.isAdvertising {
-                self.addDebugMessage("⏰ Connection watchdog triggered - restarting advertising")
                 self.restartAdvertising()
             }
         }
     }
     
     private func restartAdvertising() {
-        addDebugMessage("🔄 Restarting advertising...")
         
         // Stop current advertising
         if isAdvertising {
@@ -404,7 +345,6 @@ class TapToSendService: NSObject, ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             self.advertiser.startAdvertisingPeer()
             self.isAdvertising = true
-            self.addDebugMessage("✅ Advertising restarted")
             
             // Start new watchdog
             self.startConnectionWatchdog()
@@ -413,31 +353,24 @@ class TapToSendService: NSObject, ObservableObject {
     
     func stopAdvertising() {
         guard isAdvertising else { 
-            addDebugMessage("⚠️ Not currently advertising")
             return 
         }
-        addDebugMessage("🛑 Stopping advertising")
         advertiser.stopAdvertisingPeer()
         isAdvertising = false
-        addDebugMessage("✅ Advertising stopped")
     }
     
     func startBrowsing() {
-        addDebugMessage("🔍 startBrowsing() called - current isBrowsing: \(isBrowsing)")
         
         // Force Local Network permission request before browsing
         forceLocalNetworkPermissionRequest()
         
         guard checkPermissions() else {
-            addDebugMessage("❌ Cannot start browsing - missing permissions")
             return
         }
         
-        addDebugMessage("🔍 Starting to browse for nearby devices")
         
         // Stop any existing browsing first to ensure clean state
         if isBrowsing {
-            addDebugMessage("🔄 Stopping existing browsing session")
             browser.stopBrowsingForPeers()
             isBrowsing = false
         }
@@ -449,37 +382,26 @@ class TapToSendService: NSObject, ObservableObject {
     }
     
     private func startBrowsingWithRetry(attempt: Int = 1) {
-        addDebugMessage("🔍 Browsing attempt \(attempt)")
-        addDebugMessage("🔍 My peer ID (browser): \(myPeerID.displayName)")
-        addDebugMessage("🔍 Service type (browser): \(serviceType)")
         
         // Ensure we're not already browsing
         if isBrowsing {
-            addDebugMessage("⚠️ Already browsing, stopping first")
             browser.stopBrowsingForPeers()
             isBrowsing = false
         }
         
         // Small delay to ensure clean state
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            self.addDebugMessage("🔍 Actually calling browser.startBrowsingForPeers() now...")
             self.browser.startBrowsingForPeers()
             self.isBrowsing = true
-            self.addDebugMessage("✅ Browsing started successfully - isBrowsing = true")
-            self.addDebugMessage("🔍 Waiting for nearby devices to appear...")
         }
     }
     
     func stopBrowsing() {
-        addDebugMessage("🛑 stopBrowsing() called - current isBrowsing: \(isBrowsing)")
         guard isBrowsing else { 
-            addDebugMessage("⚠️ Not currently browsing - no action needed")
             return 
         }
-        addDebugMessage("🛑 Stopping browsing")
         browser.stopBrowsingForPeers()
         isBrowsing = false
-        addDebugMessage("✅ Browsing stopped")
     }
     
     func sendPaymentRequest(to peer: MCPeerID, amount: Double, currency: String = "USD", message: String = "") {
@@ -528,15 +450,11 @@ class TapToSendService: NSObject, ObservableObject {
             timestamp: Date()
         )
         
-        addDebugMessage("💸 Initiated tap-to-send for \(amount) \(currency)")
-        addDebugMessage("🔍 Connected peers: \(connectedPeers.count)")
         
         // If already connected, send payment immediately
         if !connectedPeers.isEmpty {
-            addDebugMessage("💸 Already connected to peers, sending payment immediately...")
             sendPendingPaymentToConnectedPeers()
         } else {
-            addDebugMessage("🔄 No connected peers, starting advertising and browsing...")
             // Start BOTH advertising AND browsing for maximum connectivity
             startAdvertising()
             startBrowsing()
@@ -550,7 +468,6 @@ class TapToSendService: NSObject, ObservableObject {
         // If no connection after 10 seconds, show alternative
         DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) {
             if !self.isConnected && self.isAdvertising {
-                self.addDebugMessage("⚠️ Connection timeout - offering alternative methods")
                 self.showPermissionAlert(message: "La conexión directa está tardando. Puedes usar 'Share Payment Link' para enviar el pago por mensaje.")
             }
         }
@@ -563,7 +480,6 @@ class TapToSendService: NSObject, ObservableObject {
     }
     
     func disconnect() {
-        addDebugMessage("🔌 Disconnecting from all peers")
         
         // Stop all operations
         stopAdvertising()
@@ -581,11 +497,9 @@ class TapToSendService: NSObject, ObservableObject {
         paymentSent = false
         paymentResponse = nil
         
-        addDebugMessage("✅ Disconnected from all peers")
     }
     
     func resetService() {
-        addDebugMessage("🔄 Resetting TapToSend service")
         
         // Disconnect everything
         disconnect()
@@ -593,52 +507,34 @@ class TapToSendService: NSObject, ObservableObject {
         // Recreate the session
         recreateMultipeerSession()
         
-        addDebugMessage("✅ TapToSend service reset complete")
     }
     
     func forceRestartBrowsing() {
-        addDebugMessage("🔄 Force restarting browsing...")
         
         // Always stop browsing first
         if isBrowsing {
             browser.stopBrowsingForPeers()
             isBrowsing = false
-            addDebugMessage("🛑 Stopped existing browsing for force restart")
         }
         
         // Small delay then restart
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            self.addDebugMessage("🔄 Force restarting browsing after delay...")
             self.startBrowsing()
         }
     }
     
     func testAdvertiserDelegate() {
-        addDebugMessage("🧪 Testing advertiser delegate...")
-        addDebugMessage("🔍 Advertiser exists: \(advertiser != nil ? "✅ YES" : "❌ NO")")
-        addDebugMessage("🔍 Advertiser delegate set: \(advertiser?.delegate != nil ? "✅ YES" : "❌ NO")")
-        addDebugMessage("🔍 Advertiser is advertising: \(isAdvertising ? "✅ YES" : "❌ NO")")
-        addDebugMessage("🔍 Advertiser peer ID: \(advertiser?.myPeerID.displayName ?? "nil")")
-        addDebugMessage("🔍 Advertiser service type: \(advertiser?.serviceType ?? "nil")")
-        addDebugMessage("🔍 Expected service type: \(serviceType)")
-        addDebugMessage("🔍 Service type match: \((advertiser?.serviceType ?? "") == serviceType ? "✅ YES" : "❌ NO")")
         
         // Test if we can call the delegate method (this won't actually work but shows the method exists)
         if advertiser?.delegate != nil {
-            addDebugMessage("✅ Advertiser delegate is properly set and should receive invitations")
         } else {
-            addDebugMessage("❌ Advertiser delegate is NOT set - invitations will be lost!")
         }
     }
     
     func sendPendingPaymentToConnectedPeers() {
-        addDebugMessage("💸 Checking for pending payment to send to connected peers...")
-        addDebugMessage("🔍 Connected peers: \(connectedPeers.count)")
-        addDebugMessage("🔍 Pending payment exists: \(pendingPayment != nil ? "✅ YES" : "❌ NO")")
         
         if let pending = pendingPayment, !connectedPeers.isEmpty {
             for peer in connectedPeers {
-                addDebugMessage("💸 Sending pending payment to \(peer.displayName)")
                 sendPaymentRequest(
                     to: peer,
                     amount: pending.amount,
@@ -647,11 +543,8 @@ class TapToSendService: NSObject, ObservableObject {
                 )
             }
             pendingPayment = nil
-            addDebugMessage("✅ Payment sent to all connected peers")
         } else if pendingPayment == nil {
-            addDebugMessage("ℹ️ No pending payment to send")
         } else {
-            addDebugMessage("⚠️ No connected peers to send payment to")
         }
     }
 }
@@ -660,7 +553,6 @@ class TapToSendService: NSObject, ObservableObject {
 extension TapToSendService: MCSessionDelegate {
     func session(_ session: MCSession, peer peerID: MCPeerID, didChange state: MCSessionState) {
         DispatchQueue.main.async {
-            self.addDebugMessage("🔄 Session state changed for \(peerID.displayName): \(self.getStateString(state))")
             
             switch state {
             case .connected:
@@ -668,26 +560,21 @@ extension TapToSendService: MCSessionDelegate {
                     self.connectedPeers.append(peerID)
                 }
                 self.isConnected = true
-                self.addDebugMessage("🔗 Connected to \(peerID.displayName)")
-                self.addDebugMessage("🔍 Total connected peers: \(self.connectedPeers.count)")
                 
                 // Stop browsing once connected to avoid conflicts
                 if self.isBrowsing {
                     self.browser.stopBrowsingForPeers()
                     self.isBrowsing = false
-                    self.addDebugMessage("🛑 Stopped browsing - device connected")
                 }
                 
                 // Also stop advertising once connected to avoid duplicate connections
                 if self.isAdvertising {
                     self.advertiser.stopAdvertisingPeer()
                     self.isAdvertising = false
-                    self.addDebugMessage("🛑 Stopped advertising - device connected")
                 }
                 
                 // If we have a pending payment, send it immediately
                 if let pending = self.pendingPayment {
-                    self.addDebugMessage("💸 Sending pending payment to \(peerID.displayName)")
                     self.sendPaymentRequest(
                         to: peerID,
                         amount: pending.amount,
@@ -698,25 +585,21 @@ extension TapToSendService: MCSessionDelegate {
                 }
                 
             case .connecting:
-                self.addDebugMessage("🔄 Connecting to \(peerID.displayName)")
-                self.addDebugMessage("🔍 Session connected peers during connecting: \(session.connectedPeers.count)")
+                break
                 
             case .notConnected:
                 self.connectedPeers.removeAll { $0 == peerID }
                 self.isConnected = !self.connectedPeers.isEmpty
-                self.addDebugMessage("❌ Disconnected from \(peerID.displayName)")
-                self.addDebugMessage("🔍 Remaining connected peers: \(self.connectedPeers.count)")
                 
                 // If we lost all connections and were browsing, restart browsing
                 if !self.isConnected && !self.isBrowsing {
-                    self.addDebugMessage("🔄 Restarting browsing after disconnection")
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                         self.startBrowsing()
                     }
                 }
                 
             @unknown default:
-                self.addDebugMessage("⚠️ Unknown connection state with \(peerID.displayName)")
+                break
             }
         }
     }
@@ -736,26 +619,21 @@ extension TapToSendService: MCSessionDelegate {
     
     func session(_ session: MCSession, didReceive data: Data, fromPeer peerID: MCPeerID) {
         DispatchQueue.main.async {
-            self.addDebugMessage("📨 Received data from \(peerID.displayName)")
             do {
                 // Try to decode as PaymentRequest
                 if let paymentRequest = try? JSONDecoder().decode(PaymentRequest.self, from: data) {
                     self.receivedPaymentRequest = paymentRequest
                     self.showPaymentRequest = true
-                    self.addDebugMessage("💸 Received payment request from \(peerID.displayName): $\(paymentRequest.amount)")
                     return
                 }
                 
                 // Try to decode as PaymentResponse
                 if let paymentResponse = try? JSONDecoder().decode(PaymentResponse.self, from: data) {
-                    self.addDebugMessage("📋 Received payment response from \(peerID.displayName)")
                     self.handlePaymentResponse(paymentResponse, from: peerID)
                     return
                 }
                 
-                self.addDebugMessage("⚠️ Unknown data format received from \(peerID.displayName)")
             } catch {
-                self.addDebugMessage("❌ Failed to decode received data: \(error)")
             }
         }
     }
@@ -765,14 +643,11 @@ extension TapToSendService: MCSessionDelegate {
             self.paymentResponse = response
             
             if response.accepted {
-                self.addDebugMessage("✅ Payment accepted by \(peer.displayName)")
                 self.paymentSent = true
                 // Handle successful payment
                 if let transactionId = response.transactionId {
-                    self.addDebugMessage("📄 Transaction ID: \(transactionId)")
                 }
             } else {
-                self.addDebugMessage("❌ Payment rejected by \(peer.displayName)")
                 self.paymentSent = false
             }
         }
@@ -794,52 +669,33 @@ extension TapToSendService: MCSessionDelegate {
 // MARK: - MCNearbyServiceAdvertiserDelegate
 extension TapToSendService: MCNearbyServiceAdvertiserDelegate {
     func advertiser(_ advertiser: MCNearbyServiceAdvertiser, didReceiveInvitationFromPeer peerID: MCPeerID, withContext context: Data?, invitationHandler: @escaping (Bool, MCSession?) -> Void) {
-        addDebugMessage("🎉 DELEGATE METHOD CALLED! advertiser(_:didReceiveInvitationFromPeer:)")
-        addDebugMessage("📨 RECEIVED INVITATION from \(peerID.displayName)")
-        addDebugMessage("🔍 Invitation context: \(context?.count ?? 0) bytes")
-        addDebugMessage("🔍 My peer ID: \(myPeerID.displayName)")
-        addDebugMessage("🔍 Session state: \(session.connectedPeers.count) connected peers")
-        addDebugMessage("🔍 Advertiser delegate is active: ✅")
-        addDebugMessage("🔍 Advertiser that received invitation: \(advertiser.myPeerID.displayName)")
-        addDebugMessage("🔍 Service type match: \(advertiser.serviceType == serviceType ? "✅ YES" : "❌ NO")")
         
         // Check if we're already connected to this peer
         if connectedPeers.contains(peerID) {
-            addDebugMessage("⚠️ Already connected to \(peerID.displayName), declining invitation")
             invitationHandler(false, nil)
             return
         }
         
         // Accept the invitation immediately
-        addDebugMessage("✅ ACCEPTING invitation from \(peerID.displayName)")
-        addDebugMessage("🔍 Using session: \(session)")
-        addDebugMessage("🔍 Session peer count before: \(session.connectedPeers.count)")
         
         // Accept with the same session instance
         invitationHandler(true, session)
         
         // Monitor connection progress
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            self.addDebugMessage("🔍 1s after invitation - session peers: \(self.session.connectedPeers.count)")
         }
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-            self.addDebugMessage("🔍 3s after invitation - session peers: \(self.session.connectedPeers.count)")
             if self.session.connectedPeers.contains(peerID) {
-                self.addDebugMessage("✅ SUCCESSFULLY CONNECTED to \(peerID.displayName)")
             } else {
-                self.addDebugMessage("❌ CONNECTION FAILED to \(peerID.displayName)")
             }
         }
     }
     
     func advertiser(_ advertiser: MCNearbyServiceAdvertiser, didNotStartAdvertisingPeer error: Error) {
-        addDebugMessage("❌ Failed to start advertising: \(error)")
         
         // Check for Local Network permission error
         if let nsError = error as NSError?, nsError.domain == "NSNetServicesErrorDomain" && nsError.code == -72008 {
-            addDebugMessage("🚨 Local Network permission denied!")
-            addDebugMessage("🔧 Attempting to request permission again...")
             
             // Try to request permission again
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
@@ -847,7 +703,6 @@ extension TapToSendService: MCNearbyServiceAdvertiserDelegate {
                 
                 // Try advertising again after permission request
                 DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-                    self.addDebugMessage("🔄 Retrying advertising after permission request...")
                     self.advertiser.startAdvertisingPeer()
                 }
             }
@@ -855,11 +710,9 @@ extension TapToSendService: MCNearbyServiceAdvertiserDelegate {
             showPermissionAlert(message: "Se requiere permiso de Red Local para tap-to-send. Ve a Configuración > Privacidad y Seguridad > Red Local y habilita el permiso para esta app. Si no aparece la app, reinicia la app y vuelve a intentar.")
         } else {
             // Other errors - try to recreate the session
-            addDebugMessage("🔧 Unknown advertising error, recreating session...")
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                 self.recreateMultipeerSession()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                    self.addDebugMessage("🔄 Retrying advertising with new session...")
                     self.advertiser.startAdvertisingPeer()
                 }
             }
@@ -870,22 +723,12 @@ extension TapToSendService: MCNearbyServiceAdvertiserDelegate {
 // MARK: - MCNearbyServiceBrowserDelegate
 extension TapToSendService: MCNearbyServiceBrowserDelegate {
     func browser(_ browser: MCNearbyServiceBrowser, foundPeer peerID: MCPeerID, withDiscoveryInfo info: [String : String]?) {
-        addDebugMessage("📱 Found peer: \(peerID.displayName)")
-        addDebugMessage("🔍 Discovery info: \(info?.description ?? "nil")")
-        addDebugMessage("🔍 My peer ID: \(myPeerID.displayName)")
-        addDebugMessage("🔍 Session connected peers: \(session.connectedPeers.count)")
-        addDebugMessage("🔍 Browser service type: \(browser.serviceType)")
-        addDebugMessage("🔍 Expected service type: \(serviceType)")
-        addDebugMessage("🔍 Service type match: \(browser.serviceType == serviceType ? "✅ YES" : "❌ NO")")
         
         // Check if we're already connected to this peer
         if connectedPeers.contains(peerID) {
-            addDebugMessage("⚠️ Already connected to \(peerID.displayName)")
-            addDebugMessage("💸 Checking if we have pending payment to send...")
             
             // If we have a pending payment, send it immediately
             if let pending = pendingPayment {
-                addDebugMessage("💸 Sending pending payment to already connected \(peerID.displayName)")
                 sendPaymentRequest(
                     to: peerID,
                     amount: pending.amount,
@@ -893,22 +736,17 @@ extension TapToSendService: MCNearbyServiceBrowserDelegate {
                     message: pending.message
                 )
                 pendingPayment = nil
-                addDebugMessage("✅ Payment sent to already connected peer")
             } else {
-                addDebugMessage("ℹ️ No pending payment to send")
             }
             return
         }
         
         // Auto-invite found peers with better error handling
-        addDebugMessage("🤝 Inviting \(peerID.displayName) to session")
-        addDebugMessage("🔍 Invitation timeout: 30 seconds")
         
         browser.invitePeer(peerID, to: session, withContext: nil, timeout: 30)
         
         // Add a check to see if invitation was sent
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            self.addDebugMessage("🔍 Post-invitation check - session peers: \(self.session.connectedPeers.count)")
         }
     }
     
@@ -917,11 +755,9 @@ extension TapToSendService: MCNearbyServiceBrowserDelegate {
     }
     
     func browser(_ browser: MCNearbyServiceBrowser, didNotStartBrowsingForPeers error: Error) {
-        addDebugMessage("❌ Failed to start browsing: \(error)")
         
         // Check for Local Network permission error
         if let nsError = error as NSError?, nsError.domain == "NSNetServicesErrorDomain" && nsError.code == -72008 {
-            addDebugMessage("🚨 Local Network permission denied!")
             showPermissionAlert(message: "Se requiere permiso de Red Local para tap-to-send. Ve a Configuración > Privacidad y Seguridad > Red Local y habilita el permiso para esta app. Si no aparece la app, reinicia la app y vuelve a intentar.")
         }
     }
@@ -930,22 +766,21 @@ extension TapToSendService: MCNearbyServiceBrowserDelegate {
 // MARK: - CBCentralManagerDelegate
 extension TapToSendService: CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
-        addDebugMessage("🔵 Bluetooth state updated: \(central.state.rawValue)")
         switch central.state {
         case .poweredOn:
-            addDebugMessage("✅ Bluetooth is powered on")
+            break
         case .poweredOff:
-            addDebugMessage("❌ Bluetooth is powered off")
+            break
         case .unauthorized:
-            addDebugMessage("❌ Bluetooth permission denied")
+            break
         case .unsupported:
-            addDebugMessage("❌ Bluetooth not supported")
+            break
         case .resetting:
-            addDebugMessage("⚠️ Bluetooth is resetting")
+            break
         case .unknown:
-            addDebugMessage("⚠️ Bluetooth state unknown")
+            break
         @unknown default:
-            addDebugMessage("⚠️ Unknown Bluetooth state")
+            break
         }
     }
 }

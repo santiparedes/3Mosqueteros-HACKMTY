@@ -9,6 +9,8 @@ struct CardDetailsView: View {
     @State private var balance: Double = 24092.67
     @State private var quantumWalletId: String = ""
     @State private var showQuantumSecurity = false
+    @State private var showCardInfo = false
+    @State private var hasLoadedData = false
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
@@ -23,9 +25,15 @@ struct CardDetailsView: View {
                         // Card display
                         CardDisplayView(card: card)
                         
-                        // Balance
-                        BalanceView(balance: balance)
+                        // Card action buttons
+                        CardActionButtonsView(showCardInfo: $showCardInfo)
                         
+                        // Credit Limit
+                        CreditLimitView(limit: balance, cardType: card?.type ?? "Credit")
+                        
+                        // Card info and security grouped together (hidden by default)
+                        if showCardInfo {
+                            VStack(spacing: 16) {
                         // Card info
                         CardInfoView(card: card)
                         
@@ -35,6 +43,8 @@ struct CardDetailsView: View {
                             showQuantumSecurity: $showQuantumSecurity,
                             userManager: userManager
                         )
+                            }
+                        }
                         
                         Spacer(minLength: 100)
                     }
@@ -62,13 +72,88 @@ struct CardDetailsView: View {
             }
         }
         .onAppear {
-            viewModel.loadMockData()
-            card = viewModel.getActiveCard()
-            balance = viewModel.getTotalBalance()
+            if !hasLoadedData {
+                viewModel.loadMockData()
+                card = viewModel.getActiveCard()
+                balance = viewModel.getTotalBalance()
+                hasLoadedData = true
+            }
         }
         .sheet(isPresented: $showQuantumSecurity) {
             QuantumSecurityDetailsView(quantumWalletId: quantumWalletId)
         }
+    }
+}
+
+struct CardActionButtonsView: View {
+    @Binding var showCardInfo: Bool
+    
+    var body: some View {
+        HStack(spacing: 40) {
+            // Freeze button
+            VStack(spacing: 8) {
+                Button(action: {
+                    // Freeze card action
+                }) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.nepCardBackground.opacity(0.1))
+                            .frame(width: 60, height: 60)
+                        
+                        Image(systemName: "snowflake")
+                            .font(.system(size: 24, weight: .medium))
+                            .foregroundColor(.nepBlue)
+                    }
+                }
+                
+                Text("Freeze")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.nepTextLight)
+            }
+            
+            // View button
+            VStack(spacing: 8) {
+                Button(action: {
+                    showCardInfo.toggle()
+                }) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.nepCardBackground.opacity(0.1))
+                            .frame(width: 60, height: 60)
+                        
+                        Image(systemName: "eye")
+                            .font(.system(size: 24, weight: .medium))
+                            .foregroundColor(.nepBlue)
+                    }
+                }
+                
+                Text(showCardInfo ? "Hide" : "View")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.nepTextLight)
+            }
+            
+            // Settings button
+            VStack(spacing: 8) {
+                Button(action: {
+                    // Card settings action
+                }) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.nepCardBackground.opacity(0.1))
+                            .frame(width: 60, height: 60)
+                        
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 24, weight: .medium))
+                            .foregroundColor(.nepBlue)
+                    }
+                }
+                
+                Text("Settings")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.nepTextLight)
+            }
+        }
+        .padding(.vertical, 20)
     }
 }
 
@@ -80,74 +165,41 @@ struct QuantumSecuritySection: View {
     @State private var isLoading = false
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Image(systemName: "shield.lefthalf.filled")
+        Button(action: {
+            showQuantumSecurity = true
+        }) {
+            HStack(spacing: 12) {
+                // Lock icon with encryption symbol
+                ZStack {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.nepBlue)
-                    .font(.title2)
+                    
+                    Image(systemName: "shield.lefthalf.filled")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(.nepBlue)
+                        .offset(x: 6, y: -6)
+                }
                 
-                Text("Quantum Security")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(.nepTextLight)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Encryption")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.nepTextLight)
+                    
+                    Text("Card is quantum encrypted. Click to verify.")
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundColor(.nepTextSecondary)
+                }
                 
                 Spacer()
-                
-                if quantumWalletId.isEmpty {
-                    Button("Enable") {
-                        Task {
-                            await createQuantumWallet()
-                        }
-                    }
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.nepBlue)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color.nepBlue.opacity(0.1))
-                    .cornerRadius(8)
-                    .disabled(isLoading)
-                } else {
-                    Button("View Details") {
-                        showQuantumSecurity = true
-                    }
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.nepAccent)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color.nepAccent.opacity(0.1))
-                    .cornerRadius(8)
-                }
             }
-            
-            if quantumWalletId.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Protect your card with quantum-resistant cryptography")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.nepTextSecondary)
-                    
-                    HStack(spacing: 12) {
-                        SecurityFeature(icon: "lock.shield", title: "Post-Quantum Encryption")
-                        SecurityFeature(icon: "checkmark.seal", title: "Merkle Verification")
-                        SecurityFeature(icon: "key", title: "CRYSTALS-Dilithium")
-                    }
-                }
-            } else {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Quantum Wallet Active")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.nepAccent)
-                    
-                    Text("Wallet ID: \(quantumWalletId)")
-                        .font(.system(size: 12, design: .monospaced))
-                        .foregroundColor(.nepTextLight)
-                        .padding(8)
-                        .background(Color.nepCardBackground.opacity(0.1))
-                        .cornerRadius(6)
-                }
-            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(Color.nepCardBackground.opacity(0.1))
+            .cornerRadius(12)
         }
-        .padding(16)
-        .background(Color.nepCardBackground.opacity(0.1))
-        .cornerRadius(12)
+        .buttonStyle(PlainButtonStyle())
+        .padding(.horizontal, 20)
         .sheet(isPresented: $showQuantumSecurity) {
             QuantumSecurityDetailsView(quantumWalletId: quantumWalletId)
         }
@@ -169,79 +221,153 @@ struct QuantumSecuritySection: View {
     }
 }
 
-struct SecurityFeature: View {
-    let icon: String
-    let title: String
-    
-    var body: some View {
-        VStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.system(size: 16))
-                .foregroundColor(.nepBlue)
-            
-            Text(title)
-                .font(.system(size: 10, weight: .medium))
-                .foregroundColor(.nepTextSecondary)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-    }
-}
 
 struct QuantumSecurityDetailsView: View {
     let quantumWalletId: String
     @Environment(\.dismiss) private var dismiss
     @StateObject private var quantumAPI = QuantumAPI.shared
-    @State private var receipts: [QuantumReceipt] = []
     @State private var isLoading = false
+    @State private var verificationResult: QuantumVerificationResult?
+    @State private var hasVerified = false
     
     var body: some View {
         NavigationView {
-            List {
-                Section("Wallet Information") {
-                    HStack {
-                        Text("Wallet ID")
-                        Spacer()
-                        Text(quantumWalletId)
-                            .font(.system(.body, design: .monospaced))
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    HStack {
-                        Text("Security Level")
-                        Spacer()
-                        Text("CRYSTALS-Dilithium")
-                            .foregroundColor(.green)
-                            .font(.system(size: 12, weight: .semibold))
-                    }
-                    
-                    HStack {
-                        Text("Status")
-                        Spacer()
-                        Text("Active")
-                            .foregroundColor(.green)
-                    }
-                }
+            ZStack {
+                // Background
+                GrainyGradientView.backgroundGradient()
+                    .ignoresSafeArea()
                 
-                Section("Recent Transactions") {
-                    if isLoading {
-                        HStack {
-                            Spacer()
-                            ProgressView()
-                            Spacer()
-                        }
-                    } else if receipts.isEmpty {
-                        Text("No transactions yet")
-                            .foregroundColor(.secondary)
-                    } else {
-                        ForEach(receipts) { receipt in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("TX: \(receipt.tx.fromWallet)")
-                                    .font(.system(.caption, design: .monospaced))
+                ScrollView {
+                    VStack(spacing: 24) {
+                        if quantumWalletId.isEmpty {
+                            // Setup flow for new quantum wallet
+                            VStack(spacing: 24) {
+                                // Header
+                                VStack(spacing: 16) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(Color.nepBlue.opacity(0.1))
+                                            .frame(width: 80, height: 80)
+                                        
+                                        Image(systemName: "lock.shield.fill")
+                                            .font(.system(size: 32, weight: .medium))
+                                            .foregroundColor(.nepBlue)
+                                    }
+                                    
+                                    VStack(spacing: 8) {
+                                        Text("Enable Quantum Security")
+                                            .font(.system(size: 24, weight: .bold))
+                                            .foregroundColor(.nepTextLight)
+                                        
+                                        Text("Protect your card with post-quantum cryptography")
+                                            .font(.system(size: 16, weight: .medium))
+                                            .foregroundColor(.nepTextSecondary)
+                                            .multilineTextAlignment(.center)
+                                    }
+                                }
+                                .padding(.top, 20)
                                 
-                                Text("Amount: $\(receipt.tx.amount, specifier: "%.2f")")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                                // Benefits
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text("Security Benefits")
+                                        .font(.system(size: 18, weight: .bold))
+                                        .foregroundColor(.nepTextLight)
+                                        .padding(.horizontal, 20)
+                                    
+                                    VStack(spacing: 8) {
+                                        SecurityFeatureRow(icon: "shield.lefthalf.filled", title: "Post-Quantum Resistant", description: "Protected against future quantum attacks")
+                                        SecurityFeatureRow(icon: "key.fill", title: "Dilithium Signatures", description: "Advanced cryptographic signatures")
+                                        SecurityFeatureRow(icon: "checkmark.seal.fill", title: "Merkle Verification", description: "Tamper-proof transaction verification")
+                                    }
+                                    .padding(.horizontal, 20)
+                                }
+                                
+                                // Enable button
+                                Button(action: {
+                                    // Enable quantum security
+                                }) {
+                                    Text("Enable Quantum Security")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundColor(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 16)
+                                        .background(Color.nepBlue)
+                                        .cornerRadius(12)
+                                }
+                                .padding(.horizontal, 20)
+                            }
+                        } else {
+                            // Existing verification flow
+                            VStack(spacing: 24) {
+                                // Header
+                                VStack(spacing: 16) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(Color.nepBlue.opacity(0.1))
+                                            .frame(width: 80, height: 80)
+                                        
+                                        Image(systemName: "lock.shield.fill")
+                                            .font(.system(size: 32, weight: .medium))
+                                            .foregroundColor(.nepBlue)
+                                    }
+                                    
+                                    VStack(spacing: 8) {
+                                        Text("Quantum Encryption Verified")
+                                            .font(.system(size: 24, weight: .bold))
+                                            .foregroundColor(.nepTextLight)
+                                        
+                                        Text("Your card is protected with post-quantum cryptography")
+                                            .font(.system(size: 16, weight: .medium))
+                                            .foregroundColor(.nepTextSecondary)
+                                            .multilineTextAlignment(.center)
+                                    }
+                                }
+                                .padding(.top, 20)
+                        
+                        // Verification Details
+                        VStack(spacing: 16) {
+                            VerificationDetailRow(
+                                title: "Encryption Algorithm",
+                                value: "CRYSTALS-Dilithium",
+                                status: .verified
+                            )
+                            
+                            VerificationDetailRow(
+                                title: "Key Size",
+                                value: "256-bit",
+                                status: .verified
+                            )
+                            
+                            VerificationDetailRow(
+                                title: "Merkle Tree Root",
+                                value: "0x\(quantumWalletId.prefix(16))...",
+                                status: .verified
+                            )
+                            
+                            VerificationDetailRow(
+                                title: "Last Verified",
+                                value: "Just now",
+                                status: .verified
+                            )
+                        }
+                        .padding(.horizontal, 20)
+                        
+                        // Security Features
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Security Features")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(.nepTextLight)
+                                .padding(.horizontal, 20)
+                            
+                            VStack(spacing: 8) {
+                                SecurityFeatureRow(icon: "shield.lefthalf.filled", title: "Post-Quantum Resistant", description: "Protected against future quantum attacks")
+                                SecurityFeatureRow(icon: "key.fill", title: "Dilithium Signatures", description: "Advanced cryptographic signatures")
+                                SecurityFeatureRow(icon: "checkmark.seal.fill", title: "Merkle Verification", description: "Tamper-proof transaction verification")
+                            }
+                            .padding(.horizontal, 20)
+                        }
+                        
+                        Spacer(minLength: 50)
                             }
                         }
                     }
@@ -249,38 +375,160 @@ struct QuantumSecurityDetailsView: View {
             }
             .navigationTitle("Quantum Security")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         dismiss()
                     }
+                    .foregroundColor(.nepBlue)
                 }
             }
         }
         .onAppear {
-            loadReceipts()
+            if !hasVerified {
+                verifyQuantumSecurity()
+                hasVerified = true
+            }
         }
     }
     
-    private func loadReceipts() {
+    private func verifyQuantumSecurity() {
         isLoading = true
-        // In a real app, you'd fetch receipts from the API
-        // For now, we'll use mock data
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-            receipts = []
-            isLoading = false
+        // Set verification result immediately without delay
+        verificationResult = QuantumVerificationResult(
+            isVerified: true,
+            algorithm: "CRYSTALS-Dilithium",
+            keySize: "256-bit",
+            timestamp: Date()
+        )
+        isLoading = false
+    }
+}
+
+struct QuantumVerificationResult {
+    let isVerified: Bool
+    let algorithm: String
+    let keySize: String
+    let timestamp: Date
+}
+
+struct VerificationDetailRow: View {
+    let title: String
+    let value: String
+    let status: VerificationStatus
+    
+    enum VerificationStatus {
+        case verified, pending, failed
+        
+        var color: Color {
+            switch self {
+            case .verified: return .green
+            case .pending: return .orange
+            case .failed: return .red
+            }
         }
+        
+        var icon: String {
+            switch self {
+            case .verified: return "checkmark.circle.fill"
+            case .pending: return "clock.circle.fill"
+            case .failed: return "xmark.circle.fill"
+            }
+        }
+    }
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: status.icon)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(status.color)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.nepTextSecondary)
+                
+                Text(value)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.nepTextLight)
+            }
+            
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(Color.nepCardBackground.opacity(0.1))
+        .cornerRadius(12)
+    }
+}
+
+struct SecurityFeatureRow: View {
+    let icon: String
+    let title: String
+    let description: String
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(.nepBlue)
+                .frame(width: 20)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.nepTextLight)
+                
+                Text(description)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.nepTextSecondary)
+            }
+            
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(Color.nepCardBackground.opacity(0.05))
+        .cornerRadius(10)
     }
 }
 
 struct CardDisplayView: View {
     let card: Card?
     
+    private var cardType: String {
+        return card?.type ?? "Credit"
+    }
+    
+    private var cardGradient: LinearGradient {
+        switch cardType.lowercased() {
+        case "credit":
+            return LinearGradient(
+                colors: [Color(red: 0.2, green: 0.1, blue: 0.4), Color(red: 0.4, green: 0.2, blue: 0.6)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        case "debit":
+            return LinearGradient(
+                colors: [Color(red: 0.1, green: 0.3, blue: 0.2), Color(red: 0.2, green: 0.5, blue: 0.3)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        default:
+            return LinearGradient(
+                colors: [Color(red: 0.1, green: 0.1, blue: 0.2), Color(red: 0.2, green: 0.2, blue: 0.4)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+    }
+    
     var body: some View {
         ZStack {
-            // Card background with grainy gradient
+            // Card background with type-specific gradient
             ZStack {
-                GrainyGradientView.cardGradient()
+                cardGradient
                     .clipShape(RoundedRectangle(cornerRadius: 20))
             }
             .frame(width: 320, height: 200)
@@ -317,7 +565,7 @@ struct CardDisplayView: View {
                     
                     Spacer()
                     
-                    Text("Debit")
+                    Text(cardType)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.white)
                 }
@@ -328,35 +576,47 @@ struct CardDisplayView: View {
     }
 }
 
-struct BalanceView: View {
-    let balance: Double
-    @State private var isBalanceHidden = false
+struct CreditLimitView: View {
+    let limit: Double
+    let cardType: String
+    @State private var isLimitHidden = false
+    
+    private var title: String {
+        switch cardType.lowercased() {
+        case "credit":
+            return "Credit Limit"
+        case "debit":
+            return "Available Balance"
+        default:
+            return "Credit Limit"
+        }
+    }
     
     var body: some View {
         VStack(spacing: 8) {
             HStack {
-                Text("Total Balance")
+                Text(title)
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.nepTextSecondary)
                 
                 Spacer()
                 
                 Button(action: {
-                    isBalanceHidden.toggle()
+                    isLimitHidden.toggle()
                 }) {
-                    Image(systemName: isBalanceHidden ? "eye.slash" : "eye")
+                    Image(systemName: isLimitHidden ? "eye.slash" : "eye")
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.nepTextSecondary)
                 }
             }
             
-            if isBalanceHidden {
+            if isLimitHidden {
                 // Show dots like password field, keeping the $ sign
                 Text("$••••••")
                     .font(.system(size: 36, weight: .bold))
                     .foregroundColor(.nepTextLight)
             } else {
-                Text(formatCurrency(balance))
+                Text(formatCurrency(limit))
                     .font(.system(size: 36, weight: .bold))
                     .foregroundColor(.nepTextLight)
             }

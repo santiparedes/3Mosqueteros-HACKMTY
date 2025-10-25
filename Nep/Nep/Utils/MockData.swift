@@ -51,8 +51,8 @@ struct MockData {
     static let sampleCards = [
         Card(
             id: "1",
-            nickname: "Primary Card",
-            type: "Debit",
+            nickname: "Credit Card",
+            type: "Credit",
             accountId: "1",
             customerId: "1",
             cardNumber: "5231 7252 1769 8152",
@@ -62,7 +62,7 @@ struct MockData {
         ),
         Card(
             id: "2",
-            nickname: "Backup Card",
+            nickname: "Debit Card",
             type: "Debit",
             accountId: "2",
             customerId: "1",

@@ -40,22 +40,27 @@ class ElevenLabsService: NSObject, ObservableObject {
     
     // MARK: - Text to Speech
     func speak(_ text: String, voiceId: String = APIConfig.defaultVoiceId) async {
+        print("🎤 ELEVENLABS: Starting speech generation...")
+        print("🎤 ELEVENLABS: Text to speak: \(text.prefix(50))...")
+        
         await MainActor.run {
             isSpeaking = true
             currentMessage = text
         }
         
         guard APIConfig.isElevenLabsConfigured else {
-            print("ElevenLabs API not configured. Using system TTS.")
+            print("❌ ELEVENLABS: API not configured. Using system TTS.")
             await speakWithSystemTTS(text)
             return
         }
         
+        print("✅ ELEVENLABS: API configured, generating speech...")
         do {
             let audioData = try await generateSpeech(text: text, voiceId: voiceId)
             try await playAudio(audioData)
+            print("✅ ELEVENLABS: Speech generated and played successfully!")
         } catch {
-            print("Speech generation error: \(error)")
+            print("❌ ELEVENLABS: Speech generation error: \(error)")
             // Fallback to system TTS
             await speakWithSystemTTS(text)
         }

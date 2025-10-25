@@ -52,6 +52,9 @@ struct QuickActionsGrid: View {
     @Binding var showAddMoney: Bool
     @Binding var showCardDetails: Bool
     @Binding var showQuantumWallet: Bool
+    @Binding var showCreditScore: Bool
+    @Binding var showEncryptionCheck: Bool
+    let onReceiveMoney: () -> Void
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -60,44 +63,46 @@ struct QuickActionsGrid: View {
                 .foregroundColor(.nepTextLight)
             
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
-                // Send Money
-                Button(action: { showSendMoney = true }) {
-                    VStack(spacing: 12) {
-                        ZStack {
-                            Circle()
-                                .fill(Color.nepBlue.opacity(0.2))
-                                .frame(width: 50, height: 50)
-                            
-                            Image(systemName: "arrow.up.circle.fill")
-                                .font(.system(size: 20, weight: .semibold))
-                                .foregroundColor(.nepBlue)
+                        // NEP Pay
+                        Button(action: { showSendMoney = true }) {
+                            VStack(spacing: 12) {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.nepBlue.opacity(0.2))
+                                        .frame(width: 50, height: 50)
+                                    
+                                    Image(systemName: "creditcard.fill")
+                                        .font(.system(size: 20, weight: .semibold))
+                                        .foregroundColor(.nepBlue)
+                                }
+                                
+                                Text("NEP Pay")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(.nepTextLight)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 20)
+                            .background(Color.nepCardBackground.opacity(0.1))
+                            .cornerRadius(16)
                         }
-                        
-                        Text("Send Money")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.nepTextLight)
-                            .multilineTextAlignment(.center)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 20)
-                    .background(Color.nepCardBackground.opacity(0.1))
-                    .cornerRadius(16)
-                }
                 
-                // Add Money
-                Button(action: { showAddMoney = true }) {
+                // Receive Money
+                Button(action: { 
+                    onReceiveMoney()
+                }) {
                     VStack(spacing: 12) {
                         ZStack {
                             Circle()
                                 .fill(Color.nepAccent.opacity(0.2))
                                 .frame(width: 50, height: 50)
                             
-                            Image(systemName: "plus.circle.fill")
+                            Image(systemName: "arrow.down.circle.fill")
                                 .font(.system(size: 20, weight: .semibold))
                                 .foregroundColor(.nepAccent)
                         }
                         
-                        Text("Add Money")
+                        Text("Receive Money")
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(.nepTextLight)
                             .multilineTextAlignment(.center)
@@ -108,20 +113,20 @@ struct QuickActionsGrid: View {
                     .cornerRadius(16)
                 }
                 
-                // My Cards
-                Button(action: { showCardDetails = true }) {
+                // Credit Score
+                Button(action: { showCreditScore = true }) {
                     VStack(spacing: 12) {
                         ZStack {
                             Circle()
                                 .fill(Color.nepWarning.opacity(0.2))
                                 .frame(width: 50, height: 50)
                             
-                            Image(systemName: "creditcard.fill")
+                            Image(systemName: "chart.line.uptrend.xyaxis")
                                 .font(.system(size: 20, weight: .semibold))
                                 .foregroundColor(.nepWarning)
                         }
                         
-                        Text("My Cards")
+                        Text("Credit Score")
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(.nepTextLight)
                             .multilineTextAlignment(.center)
@@ -132,20 +137,20 @@ struct QuickActionsGrid: View {
                     .cornerRadius(16)
                 }
                 
-                // Quantum Security
-                Button(action: { showQuantumWallet = true }) {
+                // Encryption Check
+                Button(action: { showEncryptionCheck = true }) {
                     VStack(spacing: 12) {
                         ZStack {
                             Circle()
                                 .fill(Color.nepBlue.opacity(0.2))
                                 .frame(width: 50, height: 50)
                             
-                            Image(systemName: "shield.lefthalf.filled")
+                            Image(systemName: "lock.shield.fill")
                                 .font(.system(size: 20, weight: .semibold))
                                 .foregroundColor(.nepBlue)
                         }
                         
-                        Text("Quantum Security")
+                        Text("Encryption Check")
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(.nepTextLight)
                             .multilineTextAlignment(.center)
@@ -329,12 +334,15 @@ struct MainView: View {
     @State private var showAddMoney = false
     @State private var showQuantumWallet = false
     @State private var showTransactions = false
+    @State private var showCreditScore = false
+    @State private var showEncryptionCheck = false
     @State private var selectedCard: Card?
+    @State private var isBalanceVisible = true
     
     var body: some View {
         Group {
             if !isLoggedIn {
-                WelcomeView(isLoggedIn: $isLoggedIn)
+                WelcomeView(isLoggedIn: $isLoggedIn, isOnboardingComplete: $isOnboardingComplete)
             } else if !isOnboardingComplete {
                 ConsentView(isOnboardingComplete: $isOnboardingComplete)
             } else if isLoggedIn {
@@ -348,14 +356,17 @@ struct MainView: View {
                             MainHeaderView(userManager: userManager, showUserSelection: $showUserSelection)
                             
                             // Total Balance Card
-                            TotalBalanceCard(balance: getTotalBalance())
+                            TotalBalanceCard(balance: getTotalBalance(), isVisible: $isBalanceVisible)
                             
                             // Quick Actions Grid
                             QuickActionsGrid(
                                 showSendMoney: $showSendMoney,
                                 showAddMoney: $showAddMoney,
                                 showCardDetails: $showCardDetails,
-                                showQuantumWallet: $showQuantumWallet
+                                showQuantumWallet: $showQuantumWallet,
+                                showCreditScore: $showCreditScore,
+                                showEncryptionCheck: $showEncryptionCheck,
+                                onReceiveMoney: addDebugMoney
                             )
                             
                             // Account Selector
@@ -409,6 +420,14 @@ struct MainView: View {
     
     private func getTotalBalance() -> Double {
         return viewModel.accounts.reduce(0) { $0 + $1.balance }
+    }
+    
+    private func addDebugMoney() {
+        // Add $1000 to the first account for debugging
+        if !viewModel.accounts.isEmpty {
+            viewModel.accounts[0].balance += 1000.0
+            print("💰 DEBUG: Added $1,000 to account. New balance: $\(viewModel.accounts[0].balance)")
+        }
     }
 }
 
