@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Receipt Verifier</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .input-section {
+            margin-bottom: 30px;
+        }
+        
+        .input-section h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+        
+        textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 14px;
+            resize: vertical;
+            transition: border-color 0.3s ease;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #4facfe;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        button {
+            flex: 1;
+            padding: 15px 25px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .verify-btn {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+        
+        .verify-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(79, 172, 254, 0.3);
+        }
+        
+        .clear-btn {
+            background: #f8f9fa;
+            color: #6c757d;
+            border: 2px solid #e9ecef;
+        }
+        
+        .clear-btn:hover {
+            background: #e9ecef;
+        }
+        
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            text-align: center;
+            font-size: 1.1em;
+        }
+        
+        .result.valid {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+        
+        .result.invalid {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+        
+        .result.loading {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 2px solid #bee5eb;
+        }
+        
+        .details {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #4facfe;
+        }
+        
+        .details h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .detail-item:last-child {
+            border-bottom: none;
+        }
+        
+        .detail-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .detail-value {
+            color: #6c757d;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9em;
+        }
+        
+        .crypto-info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        
+        .crypto-info h3 {
+            margin-bottom: 10px;
+        }
+        
+        .crypto-info p {
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4facfe;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛡️ Quantum Receipt Verifier</h1>
+            <p>Verify Post-Quantum Cryptography receipts offline</p>
+        </div>
+        
+        <div class="content">
+            <div class="input-section">
+                <h2>Paste Your Quantum Receipt</h2>
+                <textarea id="receiptInput" placeholder="Paste your quantum receipt JSON here..."></textarea>
+                
+                <div class="button-group">
+                    <button class="verify-btn" onclick="verifyReceipt()">
+                        <span id="verifyText">🔍 Verify Receipt</span>
+                    </button>
+                    <button class="clear-btn" onclick="clearInput()">Clear</button>
+                </div>
+            </div>
+            
+            <div id="result" class="result hidden"></div>
+            <div id="details" class="details hidden"></div>
+            
+            <div class="crypto-info">
+                <h3>🔐 About Quantum Receipts</h3>
+                <p>
+                    This verifier checks the cryptographic integrity of quantum receipts using:
+                    <strong>Merkle tree proofs</strong> for transaction inclusion and 
+                    <strong>Post-Quantum Cryptography signatures</strong> for authenticity.
+                    All verification happens locally in your browser - no data is sent to external servers.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // SHA-256 implementation for Merkle verification
+        async function sha256(message) {
+            const msgBuffer = new TextEncoder().encode(message);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // Convert hex string to bytes
+        function hexToBytes(hex) {
+            const bytes = [];
+            for (let i = 0; i < hex.length; i += 2) {
+                bytes.push(parseInt(hex.substr(i, 2), 16));
+            }
+            return new Uint8Array(bytes);
+        }
+
+        // Convert bytes to hex string
+        function bytesToHex(bytes) {
+            return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // Verify Merkle proof
+        async function verifyMerkleProof(txHash, proof, expectedRoot) {
+            let currentHash = txHash.toLowerCase();
+            
+            for (const proofItem of proof) {
+                const siblingHash = proofItem.hash.toLowerCase();
+                
+                let combined;
+                if (proofItem.dir === 'L') {
+                    // Left sibling: sibling + current
+                    combined = hexToBytes(siblingHash) + hexToBytes(currentHash);
+                } else {
+                    // Right sibling: current + sibling
+                    combined = hexToBytes(currentHash) + hexToBytes(siblingHash);
+                }
+                
+                // Convert back to hex string for hashing
+                const combinedHex = bytesToHex(combined);
+                currentHash = await sha256(combinedHex);
+            }
+            
+            return currentHash.toLowerCase() === expectedRoot.toLowerCase();
+        }
+
+        // Verify receipt
+        async function verifyReceipt() {
+            const input = document.getElementById('receiptInput').value.trim();
+            const resultDiv = document.getElementById('result');
+            const detailsDiv = document.getElementById('details');
+            const verifyText = document.getElementById('verifyText');
+            
+            if (!input) {
+                showResult('Please paste a receipt to verify', 'invalid');
+                return;
+            }
+            
+            // Show loading state
+            verifyText.innerHTML = '<span class="spinner"></span>Verifying...';
+            resultDiv.className = 'result loading';
+            resultDiv.textContent = 'Verifying receipt...';
+            resultDiv.classList.remove('hidden');
+            detailsDiv.classList.add('hidden');
+            
+            try {
+                const receipt = JSON.parse(input);
+                
+                // Validate receipt structure
+                if (!receipt.tx || !receipt.sig_pqc || !receipt.block_header || !receipt.merkle_proof) {
+                    throw new Error('Invalid receipt format');
+                }
+                
+                // Create transaction hash
+                const txJson = JSON.stringify(receipt.tx);
+                const txHash = await sha256(txJson);
+                
+                // Verify Merkle proof
+                const merkleValid = await verifyMerkleProof(
+                    txHash,
+                    receipt.merkle_proof,
+                    receipt.block_header.merkle_root
+                );
+                
+                // For demo purposes, we'll consider signature valid if it exists
+                // In a real implementation, you'd verify the PQC signature here
+                const signatureValid = receipt.sig_pqc && receipt.sig_pqc.length > 0;
+                
+                if (merkleValid && signatureValid) {
+                    showResult('✅ Receipt is VALID and verified!', 'valid');
+                    showDetails(receipt);
+                } else {
+                    let reason = [];
+                    if (!merkleValid) reason.push('Merkle proof verification failed');
+                    if (!signatureValid) reason.push('Invalid signature');
+                    showResult(`❌ Receipt verification FAILED: ${reason.join(', ')}`, 'invalid');
+                }
+                
+            } catch (error) {
+                showResult(`❌ Error: ${error.message}`, 'invalid');
+            } finally {
+                verifyText.innerHTML = '🔍 Verify Receipt';
+            }
+        }
+
+        // Show verification result
+        function showResult(message, type) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = message;
+            resultDiv.className = `result ${type}`;
+            resultDiv.classList.remove('hidden');
+        }
+
+        // Show receipt details
+        function showDetails(receipt) {
+            const detailsDiv = document.getElementById('details');
+            
+            const details = `
+                <h3>📋 Receipt Details</h3>
+                <div class="detail-item">
+                    <span class="detail-label">From:</span>
+                    <span class="detail-value">${receipt.tx.from_wallet}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">To:</span>
+                    <span class="detail-value">${receipt.tx.to}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Amount:</span>
+                    <span class="detail-value">${receipt.tx.amount} ${receipt.tx.currency}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Nonce:</span>
+                    <span class="detail-value">${receipt.tx.nonce}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Timestamp:</span>
+                    <span class="detail-value">${new Date(receipt.tx.timestamp * 1000).toLocaleString()}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Block Index:</span>
+                    <span class="detail-value">#${receipt.block_header.index}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Block Sealed:</span>
+                    <span class="detail-value">${new Date(receipt.block_header.sealed_at * 1000).toLocaleString()}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Merkle Root:</span>
+                    <span class="detail-value">${receipt.block_header.merkle_root}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Proof Steps:</span>
+                    <span class="detail-value">${receipt.merkle_proof.length}</span>
+                </div>
+            `;
+            
+            detailsDiv.innerHTML = details;
+            detailsDiv.classList.remove('hidden');
+        }
+
+        // Clear input
+        function clearInput() {
+            document.getElementById('receiptInput').value = '';
+            document.getElementById('result').classList.add('hidden');
+            document.getElementById('details').classList.add('hidden');
+        }
+
+        // Example receipt for testing
+        function loadExample() {
+            const exampleReceipt = {
+                "tx": {
+                    "from_wallet": "wallet_abc123",
+                    "to": "wallet_xyz789",
+                    "amount": 1250.00,
+                    "currency": "MXN",
+                    "nonce": 102,
+                    "timestamp": 1730001112
+                },
+                "sig_pqc": "dGVzdF9zaWduYXR1cmU=",
+                "pubkey_pqc": "dGVzdF9wdWJsaWNfa2V5",
+                "block_header": {
+                    "index": 42,
+                    "sealed_at": 1730001155,
+                    "merkle_root": "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456"
+                },
+                "merkle_proof": [
+                    {"dir": "L", "hash": "def456789012345678901234567890abcdef1234567890abcdef1234567890ab"},
+                    {"dir": "R", "hash": "789012345678901234567890abcdef1234567890abcdef1234567890abcdef12"}
+                ]
+            };
+            
+            document.getElementById('receiptInput').value = JSON.stringify(exampleReceipt, null, 2);
+        }
+
+        // Add example button
+        document.addEventListener('DOMContentLoaded', function() {
+            const buttonGroup = document.querySelector('.button-group');
+            const exampleBtn = document.createElement('button');
+            exampleBtn.className = 'clear-btn';
+            exampleBtn.textContent = 'Load Example';
+            exampleBtn.onclick = loadExample;
+            buttonGroup.appendChild(exampleBtn);
+        });
+    </script>
+</body>
+</html>

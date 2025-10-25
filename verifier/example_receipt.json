@@ -1,0 +1,31 @@
+{
+  "tx": {
+    "from_wallet": "4a70fc793df04feb",
+    "to": "recipient_wallet_456",
+    "amount": 250.0,
+    "currency": "MXN",
+    "nonce": 1,
+    "timestamp": 1761367850
+  },
+  "sig_pqc": "mock_quantum_signature_123",
+  "pubkey_pqc": "demo_public_key_123",
+  "block_header": {
+    "index": 1,
+    "sealed_at": 1761367861,
+    "merkle_root": "279c80df847cc67d55af7338c95a44575d294947ecb1f5765758cc9c37974483"
+  },
+  "merkle_proof": [
+    {
+      "dir": "R",
+      "hash": "20730adb092512304eb8690aae55640913cb89c6e48902244718be967b098bf2"
+    },
+    {
+      "dir": "R",
+      "hash": "aaf1dfa40dfee6fef8d89c12bfe4fde5978219ceed0dd5d83e1dad0274dd403c"
+    },
+    {
+      "dir": "L",
+      "hash": "cfd839f1ea062df1579e619550df7a3e420b926da04c4a8f2bebcda3379d1e9d"
+    }
+  ]
+}
