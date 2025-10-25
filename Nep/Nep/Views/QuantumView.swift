@@ -19,11 +19,11 @@ struct QuantumView: View {
                 VStack(spacing: 24) {
                     // Header
                     QuantumHeaderView()
-                    
-                    if walletId.isEmpty {
+                        
+                        if walletId.isEmpty {
                         // No wallet state
                         NoWalletView(showCreateWallet: $showCreateWallet)
-                    } else {
+                        } else {
                         // Wallet exists state
                         WalletExistsView(
                             walletId: walletId,
@@ -55,7 +55,7 @@ struct QuantumView: View {
 // MARK: - Header View
 struct QuantumHeaderView: View {
     var body: some View {
-        HStack {
+                            HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Quantum Wallet")
                     .font(.system(size: 28, weight: .bold))
@@ -339,7 +339,7 @@ struct RecentReceiptsView: View {
             
             if quantumReceipts.isEmpty {
                 EmptyReceiptsView()
-            } else {
+                    } else {
                 VStack(spacing: 12) {
                     ForEach(Array(quantumReceipts.prefix(3))) { receipt in
                         ReceiptRowView(receipt: receipt)
@@ -473,8 +473,8 @@ struct SendQuantumPaymentView: View {
                 
                 Text("This feature will be implemented soon")
                     .foregroundColor(.secondary)
-                
-                Spacer()
+                    
+                    Spacer()
             }
             .navigationTitle("Send Payment")
             .navigationBarTitleDisplayMode(.inline)

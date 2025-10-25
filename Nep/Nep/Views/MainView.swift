@@ -424,7 +424,7 @@ struct MainView: View {
                     CardDetailsView()
                 }
                 .fullScreenCover(isPresented: $showSendMoney) {
-                    SendMoneyView()
+                    TapToSendView()
                 }
                 .fullScreenCover(isPresented: $showAddMoney) {
                     AddMoneyView()

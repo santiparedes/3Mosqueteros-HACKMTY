@@ -1,0 +1,42 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "TEAM_ID.com.quantumwallet.app"
+        ],
+        "components": [
+          {
+            "/": "/send",
+            "comment": "Send money deep link"
+          },
+          {
+            "/": "/request",
+            "comment": "Request money deep link"
+          },
+          {
+            "/": "/tap-to-send",
+            "comment": "Tap to send money deep link"
+          },
+          {
+            "/": "/send/*",
+            "comment": "Send money with parameters"
+          },
+          {
+            "/": "/request/*",
+            "comment": "Request money with parameters"
+          },
+          {
+            "/": "/tap-to-send/*",
+            "comment": "Tap to send with parameters"
+          }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": [
+      "TEAM_ID.com.quantumwallet.app"
+    ]
+  }
+}

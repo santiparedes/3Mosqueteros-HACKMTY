@@ -6,7 +6,41 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		31C3AADB2EAD3173001E362D /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 31C3AADA2EAD3173001E362D /* WidgetKit.framework */; };
+		31C3AADD2EAD3173001E362D /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 31C3AADC2EAD3173001E362D /* SwiftUI.framework */; };
+		31C3AAEE2EAD3174001E362D /* NepWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 31C3AAD82EAD3173001E362D /* NepWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		31C3AAEC2EAD3174001E362D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 31D3B0B62EAC936600D6E17B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 31C3AAD72EAD3173001E362D;
+			remoteInfo = NepWidgetExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		31C3AAF32EAD3174001E362D /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				31C3AAEE2EAD3174001E362D /* NepWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		31C3AAD82EAD3173001E362D /* NepWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NepWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		31C3AADA2EAD3173001E362D /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		31C3AADC2EAD3173001E362D /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		31C3AAF42EAD3265001E362D /* NepWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = NepWidgetExtension.entitlements; sourceTree = "<group>"; };
 		31D3B0BE2EAC936600D6E17B /* Nep.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Nep.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -18,9 +52,24 @@
 			);
 			target = 31D3B0BD2EAC936600D6E17B /* Nep */;
 		};
+		31C3AAF22EAD3174001E362D /* Exceptions for "NepWidget" folder in "NepWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 31C3AAD72EAD3173001E362D /* NepWidgetExtension */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		31C3AADE2EAD3173001E362D /* NepWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				31C3AAF22EAD3174001E362D /* Exceptions for "NepWidget" folder in "NepWidgetExtension" target */,
+			);
+			path = NepWidget;
+			sourceTree = "<group>";
+		};
 		31D3B0C02EAC936600D6E17B /* Nep */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -32,6 +81,15 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		31C3AAD52EAD3173001E362D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				31C3AADD2EAD3173001E362D /* SwiftUI.framework in Frameworks */,
+				31C3AADB2EAD3173001E362D /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		31D3B0BB2EAC936600D6E17B /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -42,10 +100,22 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		31C3AAD92EAD3173001E362D /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				31C3AADA2EAD3173001E362D /* WidgetKit.framework */,
+				31C3AADC2EAD3173001E362D /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		31D3B0B52EAC936600D6E17B = {
 			isa = PBXGroup;
 			children = (
+				31C3AAF42EAD3265001E362D /* NepWidgetExtension.entitlements */,
 				31D3B0C02EAC936600D6E17B /* Nep */,
+				31C3AADE2EAD3173001E362D /* NepWidget */,
+				31C3AAD92EAD3173001E362D /* Frameworks */,
 				31D3B0BF2EAC936600D6E17B /* Products */,
 			);
 			sourceTree = "<group>";
@@ -54,6 +124,7 @@
 			isa = PBXGroup;
 			children = (
 				31D3B0BE2EAC936600D6E17B /* Nep.app */,
+				31C3AAD82EAD3173001E362D /* NepWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -61,6 +132,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		31C3AAD72EAD3173001E362D /* NepWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 31C3AAEF2EAD3174001E362D /* Build configuration list for PBXNativeTarget "NepWidgetExtension" */;
+			buildPhases = (
+				31C3AAD42EAD3173001E362D /* Sources */,
+				31C3AAD52EAD3173001E362D /* Frameworks */,
+				31C3AAD62EAD3173001E362D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				31C3AADE2EAD3173001E362D /* NepWidget */,
+			);
+			name = NepWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = NepWidgetExtension;
+			productReference = 31C3AAD82EAD3173001E362D /* NepWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		31D3B0BD2EAC936600D6E17B /* Nep */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 31D3B0C92EAC936700D6E17B /* Build configuration list for PBXNativeTarget "Nep" */;
@@ -68,10 +161,12 @@
 				31D3B0BA2EAC936600D6E17B /* Sources */,
 				31D3B0BB2EAC936600D6E17B /* Frameworks */,
 				31D3B0BC2EAC936600D6E17B /* Resources */,
+				31C3AAF32EAD3174001E362D /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				31C3AAED2EAD3174001E362D /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				31D3B0C02EAC936600D6E17B /* Nep */,
@@ -93,6 +188,9 @@
 				LastSwiftUpdateCheck = 1640;
 				LastUpgradeCheck = 1640;
 				TargetAttributes = {
+					31C3AAD72EAD3173001E362D = {
+						CreatedOnToolsVersion = 16.4;
+					};
 					31D3B0BD2EAC936600D6E17B = {
 						CreatedOnToolsVersion = 16.4;
 					};
@@ -113,11 +211,19 @@
 			projectRoot = "";
 			targets = (
 				31D3B0BD2EAC936600D6E17B /* Nep */,
+				31C3AAD72EAD3173001E362D /* NepWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		31C3AAD62EAD3173001E362D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		31D3B0BC2EAC936600D6E17B /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -128,6 +234,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		31C3AAD42EAD3173001E362D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		31D3B0BA2EAC936600D6E17B /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -137,7 +250,71 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		31C3AAED2EAD3174001E362D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 31C3AAD72EAD3173001E362D /* NepWidgetExtension */;
+			targetProxy = 31C3AAEC2EAD3174001E362D /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		31C3AAF02EAD3174001E362D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = NepWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = T4U3LQTNHW;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = NepWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = NepWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = tec.mx.Nep.NepWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		31C3AAF12EAD3174001E362D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = NepWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = T4U3LQTNHW;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = NepWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = NepWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = tec.mx.Nep.NepWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		31D3B0C72EAC936700D6E17B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -264,15 +441,22 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Nep/Nep.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = T4U3LQTNHW;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Nep/Info.plist;
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "This app uses Bluetooth for tap-to-send money transfers between nearby devices.";
+				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "This app uses Bluetooth for tap-to-send money transfers between nearby devices.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "This app uses the camera to scan QR codes for quantum wallet transactions.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "This app uses Face ID to securely authenticate Tap-to-Send transactions.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "This app uses local network for secure peer-to-peer money transfers.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "This app uses location services to find nearby ATMs and bank branches.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiredDeviceCapabilities = armv7;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -293,15 +477,22 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Nep/Nep.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = T4U3LQTNHW;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Nep/Info.plist;
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "This app uses Bluetooth for tap-to-send money transfers between nearby devices.";
+				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "This app uses Bluetooth for tap-to-send money transfers between nearby devices.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "This app uses the camera to scan QR codes for quantum wallet transactions.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "This app uses Face ID to securely authenticate Tap-to-Send transactions.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "This app uses local network for secure peer-to-peer money transfers.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "This app uses location services to find nearby ATMs and bank branches.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiredDeviceCapabilities = armv7;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -320,6 +511,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		31C3AAEF2EAD3174001E362D /* Build configuration list for PBXNativeTarget "NepWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				31C3AAF02EAD3174001E362D /* Debug */,
+				31C3AAF12EAD3174001E362D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		31D3B0B92EAC936600D6E17B /* Build configuration list for PBXProject "Nep" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

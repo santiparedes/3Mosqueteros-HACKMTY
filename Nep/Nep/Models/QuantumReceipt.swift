@@ -125,11 +125,11 @@ struct TransactionSubmitResponse: Codable {
     }
 }
 
-struct VerifyRequest: Codable {
+struct ReceiptVerifyRequest: Codable {
     let receipt: QuantumReceipt
 }
 
-struct VerifyResponse: Codable {
+struct ReceiptVerifyResponse: Codable {
     let valid: Bool
     let reason: String?
 }

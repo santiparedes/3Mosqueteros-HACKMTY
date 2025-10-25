@@ -516,6 +516,7 @@ struct ActionButtonsView: View {
     @ObservedObject var userManager: UserManager
     @StateObject private var quantumAPI = QuantumAPI.shared
     @State private var isLoading = false
+    @State private var showTapToSend = false
     
     let actions = [
         ("ADD", "plus"),
@@ -528,7 +529,9 @@ struct ActionButtonsView: View {
             ForEach(actions, id: \.0) { action in
                 VStack(spacing: 8) {
                     Button(action: {
-                        if action.0 == "QUANTUM" {
+                        if action.0 == "SEND" {
+                            showTapToSend = true
+                        } else if action.0 == "QUANTUM" {
                             Task {
                                 await createQuantumWallet()
                             }
@@ -557,6 +560,9 @@ struct ActionButtonsView: View {
                         .foregroundColor(.nepTextLight)
                 }
             }
+        }
+        .fullScreenCover(isPresented: $showTapToSend) {
+            TapToSendView()
         }
     }
     

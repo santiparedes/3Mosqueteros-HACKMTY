@@ -1,0 +1,23 @@
+# Post-Quantum Cryptography Requirements
+# For production use with real CRYSTALS-Dilithium
+
+# Core dependencies
+fastapi==0.104.1
+uvicorn==0.24.0
+sqlalchemy==2.0.23
+pydantic==2.5.0
+
+# Post-Quantum Cryptography
+# Uncomment for production use:
+# liboqs-python==0.8.0
+
+# Alternative: Use the reference implementation
+# Uncomment for production use:
+# pqcrypto==1.0.0
+
+# For development/demo (current setup)
+# No additional PQC libraries needed - using mock implementation
+
+# Existing dependencies
+requests==2.31.0
+python-multipart==0.0.6
