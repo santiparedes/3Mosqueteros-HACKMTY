@@ -4,8 +4,8 @@ import UIKit
 class GeminiAIService: ObservableObject {
     static let shared = GeminiAIService()
     
-    private let apiKey = "YOUR_GEMINI_API_KEY" // Replace with actual API key
-    private let baseURL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
+    private let apiKey = APIConfig.geminiAPIKey
+    private let baseURL = APIConfig.geminiBaseURL
     
     @Published var currentMessage = ""
     @Published var isProcessing = false
@@ -15,6 +15,11 @@ class GeminiAIService: ObservableObject {
     
     // MARK: - INE Document Analysis
     func analyzeINEDocument(_ ocrResults: OCRResults) async -> INEAnalysis {
+        guard APIConfig.isGeminiConfigured else {
+            print("Gemini API not configured. Using fallback analysis.")
+            return createFallbackAnalysis(ocrResults)
+        }
+        
         let prompt = createINEAnalysisPrompt(ocrResults)
         
         do {
@@ -275,6 +280,34 @@ class GeminiAIService: ObservableObject {
         case .finalConfirmation:
             return "Revisemos toda la información antes de finalizar tu registro."
         }
+    }
+    
+    private func createFallbackAnalysis(_ ocrResults: OCRResults) -> INEAnalysis {
+        var missingFields: [String] = []
+        var suggestions: [String] = []
+        
+        // Basic validation without AI
+        if ocrResults.firstName.isEmpty { missingFields.append("Nombre") }
+        if ocrResults.lastName.isEmpty { missingFields.append("Apellido") }
+        if ocrResults.curp.isEmpty { missingFields.append("CURP") }
+        if ocrResults.documentNumber.isEmpty { missingFields.append("Número de INE") }
+        if ocrResults.dateOfBirth.isEmpty { missingFields.append("Fecha de Nacimiento") }
+        
+        let isValid = missingFields.isEmpty
+        let confidence = isValid ? 0.8 : 0.3
+        
+        if !isValid {
+            suggestions.append("Por favor, verifica que todos los campos estén completos")
+            suggestions.append("Asegúrate de que la foto esté bien iluminada y enfocada")
+        }
+        
+        return INEAnalysis(
+            isValid: isValid,
+            confidence: confidence,
+            missingFields: missingFields,
+            suggestions: suggestions,
+            extractedData: ocrResults
+        )
     }
 }
 

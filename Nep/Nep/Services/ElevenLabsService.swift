@@ -11,8 +11,8 @@ class ElevenLabsService: NSObject, ObservableObject {
     @Published var conversationHistory: [ConversationMessage] = []
     @Published var isGeminiProcessing = false
     
-    private let apiKey = "YOUR_ELEVENLABS_API_KEY" // Replace with actual API key
-    private let baseURL = "https://api.elevenlabs.io/v1"
+    private let apiKey = APIConfig.elevenLabsAPIKey
+    private let baseURL = APIConfig.elevenLabsBaseURL
     private var audioPlayer: AVAudioPlayer?
     private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-MX"))
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
@@ -39,10 +39,16 @@ class ElevenLabsService: NSObject, ObservableObject {
     }
     
     // MARK: - Text to Speech
-    func speak(_ text: String, voiceId: String = "pNInz6obpgDQGcFmaJgB") async {
+    func speak(_ text: String, voiceId: String = APIConfig.defaultVoiceId) async {
         await MainActor.run {
             isSpeaking = true
             currentMessage = text
+        }
+        
+        guard APIConfig.isElevenLabsConfigured else {
+            print("ElevenLabs API not configured. Using system TTS.")
+            await speakWithSystemTTS(text)
+            return
         }
         
         do {
@@ -50,6 +56,8 @@ class ElevenLabsService: NSObject, ObservableObject {
             try await playAudio(audioData)
         } catch {
             print("Speech generation error: \(error)")
+            // Fallback to system TTS
+            await speakWithSystemTTS(text)
         }
         
         await MainActor.run {
@@ -302,6 +310,22 @@ class ElevenLabsService: NSObject, ObservableObject {
             SFSpeechRecognizer.requestAuthorization { status in
                 continuation.resume(returning: status == .authorized)
             }
+        }
+    }
+    
+    // MARK: - System TTS Fallback
+    private func speakWithSystemTTS(_ text: String) async {
+        let utterance = AVSpeechUtterance(string: text)
+        utterance.voice = AVSpeechSynthesisVoice(language: "es-MX")
+        utterance.rate = 0.5
+        utterance.volume = 1.0
+        
+        let synthesizer = AVSpeechSynthesizer()
+        synthesizer.speak(utterance)
+        
+        // Wait for speech to complete
+        while synthesizer.isSpeaking {
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
         }
     }
 }

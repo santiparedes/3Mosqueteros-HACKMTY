@@ -267,42 +267,6 @@ struct AllTransactionsView: View {
     }
 }
 
-struct SettingsView: View {
-    @Environment(\.dismiss) private var dismiss
-    
-    var body: some View {
-        NavigationView {
-            VStack {
-                Text("Settings")
-                    .font(.title)
-                    .padding()
-                
-                Text("This feature will be implemented soon")
-                    .foregroundColor(.secondary)
-                
-                Spacer()
-            }
-            .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: {
-                        dismiss()
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 16, weight: .semibold))
-                            Text("Back")
-                                .font(.system(size: 16, weight: .medium))
-                        }
-                        .foregroundColor(.nepBlue)
-                    }
-                }
-            }
-        }
-    }
-}
 
 // MARK: - Simple Quantum Security Section for MainView
 struct MainQuantumSecuritySection: View {
@@ -365,7 +329,6 @@ struct MainView: View {
     @State private var showAddMoney = false
     @State private var showQuantumWallet = false
     @State private var showTransactions = false
-    @State private var showSettings = false
     @State private var selectedCard: Card?
     
     var body: some View {
@@ -439,9 +402,6 @@ struct MainView: View {
                 }
                 .fullScreenCover(isPresented: $showTransactions) {
                     AllTransactionsView(transactions: viewModel.getRecentTransactions())
-                }
-                .fullScreenCover(isPresented: $showSettings) {
-                    SettingsView()
                 }
             }
         }
