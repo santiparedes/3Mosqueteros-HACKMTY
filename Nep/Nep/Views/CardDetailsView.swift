@@ -9,44 +9,54 @@ struct CardDetailsView: View {
     @State private var balance: Double = 24092.67
     @State private var quantumWalletId: String = ""
     @State private var showQuantumSecurity = false
+    @Environment(\.dismiss) private var dismiss
     
     var body: some View {
-        ZStack {
-            Color.nepDarkBackground
-                .ignoresSafeArea()
-            
-            ScrollView {
-                VStack(spacing: 32) {
-                    // Header
-                    HStack {
-                        Button(action: {}) {
-                            Image(systemName: "ellipsis")
-                                .font(.system(size: 20, weight: .semibold))
-                                .foregroundColor(.nepTextLight)
-                        }
+        NavigationView {
+            ZStack {
+                Color.nepDarkBackground
+                    .ignoresSafeArea()
+                
+                ScrollView {
+                    VStack(spacing: 32) {
+                        // Card display
+                        CardDisplayView(card: card)
                         
-                        Spacer()
+                        // Balance
+                        BalanceView(balance: balance)
+                        
+                        // Card info
+                        CardInfoView(card: card)
+                        
+                        // Quantum Security Section
+                        QuantumSecuritySection(
+                            quantumWalletId: $quantumWalletId,
+                            showQuantumSecurity: $showQuantumSecurity,
+                            userManager: userManager
+                        )
+                        
+                        Spacer(minLength: 100)
                     }
                     .padding(.horizontal, 20)
-                    .padding(.top, 10)
-                    
-                    // Card display
-                    CardDisplayView(card: card)
-                    
-                    // Balance
-                    BalanceView(balance: balance)
-                    
-                    // Card info
-                    CardInfoView(card: card)
-                    
-                    // Quantum Security Section
-                    QuantumSecuritySection(
-                        quantumWalletId: $quantumWalletId,
-                        showQuantumSecurity: $showQuantumSecurity,
-                        userManager: userManager
-                    )
-                    
-                    Spacer(minLength: 100)
+                    .padding(.top, 20)
+                }
+            }
+            .navigationTitle("Card Details")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
+                        dismiss()
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 16, weight: .semibold))
+                            Text("Back")
+                                .font(.system(size: 16, weight: .medium))
+                        }
+                        .foregroundColor(.nepBlue)
+                    }
                 }
             }
         }
@@ -54,6 +64,9 @@ struct CardDetailsView: View {
             viewModel.loadMockData()
             card = viewModel.getActiveCard()
             balance = viewModel.getTotalBalance()
+        }
+        .sheet(isPresented: $showQuantumSecurity) {
+            QuantumSecurityDetailsView(quantumWalletId: quantumWalletId)
         }
     }
 }

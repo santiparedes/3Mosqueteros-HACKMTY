@@ -216,10 +216,19 @@ struct QuantumWalletView: View {
             }
             .navigationTitle("Quantum Wallet")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
                         dismiss()
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 16, weight: .semibold))
+                            Text("Back")
+                                .font(.system(size: 16, weight: .medium))
+                        }
+                        .foregroundColor(.nepBlue)
                     }
                 }
             }
@@ -238,10 +247,19 @@ struct AllTransactionsView: View {
             }
             .navigationTitle("All Transactions")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
                         dismiss()
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 16, weight: .semibold))
+                            Text("Back")
+                                .font(.system(size: 16, weight: .medium))
+                        }
+                        .foregroundColor(.nepBlue)
                     }
                 }
             }
@@ -266,10 +284,19 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
                         dismiss()
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 16, weight: .semibold))
+                            Text("Back")
+                                .font(.system(size: 16, weight: .medium))
+                        }
+                        .foregroundColor(.nepBlue)
                     }
                 }
             }
@@ -393,22 +420,22 @@ struct MainView: View {
                         await quantumBridge.loadMockData()
                     }
                 }
-                .sheet(isPresented: $showCardDetails) {
+                .fullScreenCover(isPresented: $showCardDetails) {
                     CardDetailsView()
                 }
-                .sheet(isPresented: $showSendMoney) {
+                .fullScreenCover(isPresented: $showSendMoney) {
                     SendMoneyView()
                 }
-                .sheet(isPresented: $showAddMoney) {
+                .fullScreenCover(isPresented: $showAddMoney) {
                     AddMoneyView()
                 }
-                .sheet(isPresented: $showQuantumWallet) {
+                .fullScreenCover(isPresented: $showQuantumWallet) {
                     QuantumWalletView(quantumWalletId: $quantumWalletId)
                 }
-                .sheet(isPresented: $showTransactions) {
+                .fullScreenCover(isPresented: $showTransactions) {
                     AllTransactionsView(transactions: viewModel.getRecentTransactions())
                 }
-                .sheet(isPresented: $showSettings) {
+                .fullScreenCover(isPresented: $showSettings) {
                     SettingsView()
                 }
             } else {
