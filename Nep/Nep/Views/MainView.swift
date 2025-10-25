@@ -76,7 +76,7 @@ struct QuickActionsGrid: View {
                                         .foregroundColor(.nepBlue)
                                 }
                                 
-                                Text("NEP Pay")
+                                Text("NepPay")
                                     .font(.system(size: 14, weight: .semibold))
                                     .foregroundColor(.nepTextLight)
                                     .multilineTextAlignment(.center)

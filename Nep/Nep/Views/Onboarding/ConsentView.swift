@@ -3,7 +3,6 @@ import AVFoundation
 
 struct ConsentView: View {
     @State private var cameraConsent = false
-    @State private var dataConsent = false
     @State private var showCamera = false
     @State private var showAlert = false
     @State private var alertMessage = ""
@@ -19,7 +18,7 @@ struct ConsentView: View {
                 VStack(spacing: 32) {
                     // Header
                     VStack(spacing: 16) {
-                        Text("Bienvenido a NEP")
+                        Text("Bienvenido a Nep")
                             .font(.custom("BrunoACESC-regular", size: 36))
                             .fontWeight(.bold)
                             .foregroundColor(.white)
@@ -33,22 +32,55 @@ struct ConsentView: View {
                     }
                     .padding(.top, 60)
                     
-                    // Consent Cards
+                    // INE Card Image
+                    VStack(spacing: 16) {
+                        Image("animacion1")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxHeight: 200)
+                            .cornerRadius(12)
+                            .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+                        
+                        Text("Ejemplo de INE")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+                    .padding(.horizontal, 20)
+                    
+                    // Next Steps Instructions
+                    VStack(spacing: 16) {
+                        Text("📋 Próximos pasos")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(.white)
+                        
+                        VStack(alignment: .leading, spacing: 12) {
+                            InstructionRow(
+                                number: "1",
+                                text: "Capturaremos una foto de tu INE (frente y reverso)"
+                            )
+                            InstructionRow(
+                                number: "2", 
+                                text: "Extraeremos automáticamente tus datos personales"
+                            )
+                            InstructionRow(
+                                number: "3",
+                                text: "Verificaremos tu identidad de forma segura"
+                            )
+                            InstructionRow(
+                                number: "4",
+                                text: "Completaremos tu registro bancario"
+                            )
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    
+                    // Camera Consent
                     VStack(spacing: 20) {
-                        // Camera Consent
                         ConsentCard(
                             icon: "camera.fill",
                             title: "Acceso a la Cámara",
                             description: "Necesitamos acceso a tu cámara para capturar fotos de tu identificación oficial (INE, pasaporte, etc.)",
                             isConsented: $cameraConsent
-                        )
-                        
-                        // Data Consent
-                        ConsentCard(
-                            icon: "lock.shield.fill",
-                            title: "Procesamiento de Datos",
-                            description: "Tus datos personales serán procesados de forma segura y encriptada. Solo utilizaremos la información necesaria para verificar tu identidad.",
-                            isConsented: $dataConsent
                         )
                     }
                     .padding(.horizontal, 20)
@@ -64,7 +96,7 @@ struct ConsentView: View {
                             .foregroundColor(.white.opacity(0.8))
                             .multilineTextAlignment(.leading)
                     }
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, 30)
                     .padding(.vertical, 20)
                     .background(
                         RoundedRectangle(cornerRadius: 16)
@@ -74,7 +106,6 @@ struct ConsentView: View {
                                     .stroke(Color.white.opacity(0.2), lineWidth: 1)
                             )
                     )
-                    .padding(.horizontal, 20)
                     
                     Spacer(minLength: 40)
                     
@@ -105,8 +136,8 @@ struct ConsentView: View {
                         )
                         .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
                     }
-                    .disabled(!cameraConsent || !dataConsent)
-                    .opacity((cameraConsent && dataConsent) ? 1.0 : 0.6)
+                    .disabled(!cameraConsent)
+                    .opacity(cameraConsent ? 1.0 : 0.6)
                     .padding(.horizontal, 32)
                     .padding(.bottom, 50)
                 }
@@ -126,7 +157,7 @@ struct ConsentView: View {
     }
     
     private func handleConsent() {
-        guard cameraConsent && dataConsent else { return }
+        guard cameraConsent else { return }
         
         // Request camera permission
         AVCaptureDevice.requestAccess(for: .video) { granted in
@@ -144,6 +175,29 @@ struct ConsentView: View {
     private func openAppSettings() {
         if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
             UIApplication.shared.open(settingsUrl)
+        }
+    }
+}
+
+struct InstructionRow: View {
+    let number: String
+    let text: String
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(number)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundColor(.white)
+                .frame(width: 24, height: 24)
+                .background(Color.nepBlue)
+                .cornerRadius(12)
+            
+            Text(text)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.white.opacity(0.9))
+                .multilineTextAlignment(.leading)
+            
+            Spacer()
         }
     }
 }

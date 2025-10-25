@@ -26,6 +26,20 @@ class CameraManager: NSObject, ObservableObject {
             return
         }
         
+        // Enable focus for better document capture
+        do {
+            try camera.lockForConfiguration()
+            if camera.isFocusModeSupported(.continuousAutoFocus) {
+                camera.focusMode = .continuousAutoFocus
+            }
+            if camera.isAutoFocusRangeRestrictionSupported {
+                camera.autoFocusRangeRestriction = .near
+            }
+            camera.unlockForConfiguration()
+        } catch {
+            print("Could not set camera focus: \(error)")
+        }
+        
         do {
             let input = try AVCaptureDeviceInput(device: camera)
             
@@ -79,14 +93,16 @@ class CameraManager: NSObject, ObservableObject {
         // Add to the new view
         view.layer.addSublayer(previewLayer)
         
-        // Set frame
+        // Set frame to fill the entire view
         DispatchQueue.main.async {
             previewLayer.frame = view.bounds
+            previewLayer.videoGravity = .resizeAspectFill
         }
     }
     
     func updatePreviewFrame(_ frame: CGRect) {
         previewLayer?.frame = frame
+        previewLayer?.videoGravity = .resizeAspectFill
     }
     
     func startSession() {

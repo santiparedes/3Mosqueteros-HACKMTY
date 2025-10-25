@@ -7,7 +7,7 @@ struct CardDetailsView: View {
     @StateObject private var userManager = UserManager.shared
     @State private var card: Card?
     @State private var balance: Double = 24092.67
-    @State private var quantumWalletId: String = ""
+    @State private var quantumWalletId: String = "qwallet_1234567890abcdef"
     @State private var showQuantumSecurity = false
     @State private var showCardInfo = false
     @State private var hasLoadedData = false

@@ -275,7 +275,7 @@ class GeminiAIService: ObservableObject {
     private func getFallbackMessage(for step: OnboardingStep) -> String {
         switch step {
         case .welcome:
-            return "¡Bienvenido a NEP! Te ayudo a completar tu registro bancario."
+            return "¡Bienvenido a Nep! Te ayudo a completar tu registro bancario."
         case .documentCapture:
             return "Por favor, toma una foto clara de tu INE. Asegúrate de que esté bien iluminado."
         case .dataVerification:

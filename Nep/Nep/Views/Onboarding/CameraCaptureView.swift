@@ -17,11 +17,13 @@ struct CameraCaptureView: View {
             // Camera Preview
             if cameraManager.isSessionRunning {
                 CameraPreviewView(cameraManager: cameraManager)
-                    .ignoresSafeArea()
+                    .ignoresSafeArea(.all)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 // Fallback view while camera is starting
                 Color.black
-                    .ignoresSafeArea()
+                    .ignoresSafeArea(.all)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .overlay(
                         VStack {
                             ProgressView()
@@ -36,9 +38,9 @@ struct CameraCaptureView: View {
                     )
             }
             
-            // Overlay UI
-            VStack {
-                // Header
+            // Overlay UI - Properly distributed across screen
+            VStack(spacing: 0) {
+                // Header - Top section
                 HStack {
                     Button(action: {
                         print("DEBUG: User tapped close button")
@@ -80,86 +82,52 @@ struct CameraCaptureView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 20)
+                .padding(.bottom, 20)
                 
-                Spacer()
-                
-                Spacer()
-                
-                // INE Document frame guide - moved much lower
-                VStack(spacing: 20) {
-                    Text("Coloca tu INE dentro del marco")
-                        .font(.system(size: 18, weight: .semibold))
+                // Middle section - Combined instructions at top
+                VStack(spacing: 16) {
+                    Text("Coloca tu INE dentro del marco. Asegúrate de que toda la información sea legible.")
+                        .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 20)
-                    
-                    // INE-specific document frame with proper aspect ratio
-                    GeometryReader { geometry in
-                        let frameWidth = min(geometry.size.width * 0.8, 300) // Max 300pt width
-                        let frameHeight = frameWidth * (85.6 / 53.98) // INE aspect ratio (85.6mm x 53.98mm)
-                        
-                        ZStack {
-                            // Dark overlay outside the frame
-                            Color.black.opacity(0.6)
-                                .mask(
-                                    Rectangle()
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 12)
-                                                .frame(width: frameWidth, height: frameHeight)
-                                                .blendMode(.destinationOut)
-                                        )
-                                )
-                                .allowsHitTesting(false)
-                            
-                            // INE document frame
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.nepBlue, lineWidth: 3)
-                                .frame(width: frameWidth, height: frameHeight)
-                                .background(Color.clear)
-                            
-                            // Corner guides for INE
-                            ForEach(0..<4) { index in
-                                let cornerSize: CGFloat = 20
-                                let cornerThickness: CGFloat = 3
-                                
-                                VStack(spacing: 0) {
-                                    Rectangle()
-                                        .fill(Color.nepBlue)
-                                        .frame(width: cornerSize, height: cornerThickness)
-                                    Rectangle()
-                                        .fill(Color.nepBlue)
-                                        .frame(width: cornerThickness, height: cornerSize)
-                                }
-                                .rotationEffect(.degrees(Double(index) * 90))
-                                .offset(
-                                    x: index % 2 == 0 ? -(frameWidth/2 - cornerSize/2) : (frameWidth/2 - cornerSize/2),
-                                    y: index < 2 ? -(frameHeight/2 - cornerSize/2) : (frameHeight/2 - cornerSize/2)
-                                )
-                            }
-                        }
-                        .frame(width: frameWidth, height: frameHeight)
-                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
-                    }
-                    .frame(height: 200)
-                    
-                    // INE-specific instructions
-                    VStack(spacing: 8) {
-                        Text("Asegúrate de que toda la información sea legible")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.white)
-                            .multilineTextAlignment(.center)
-                        
-                        Text("Incluye: Nombre, CURP, fecha de nacimiento")
-                            .font(.system(size: 14, weight: .regular))
-                            .foregroundColor(.white.opacity(0.8))
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding(.horizontal, 20)
+                        .lineLimit(nil)
                 }
+                .padding(.bottom, 20)
                 
                 Spacer()
                 
-                // Capture controls - moved down
+                // Document frame - centered
+                GeometryReader { geometry in
+                    let frameWidth = min(geometry.size.width * 0.8, 300) // Max 300pt width
+                    let frameHeight = frameWidth * (85.6 / 53.98) // INE aspect ratio (85.6mm x 53.98mm)
+                    
+                    ZStack {
+                        // Dark overlay outside the frame
+                        Color.black.opacity(0.6)
+                            .mask(
+                                Rectangle()
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .frame(width: frameWidth, height: frameHeight)
+                                            .blendMode(.destinationOut)
+                                    )
+                            )
+                            .allowsHitTesting(false)
+                        // INE document frame
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.nepBlue, lineWidth: 3)
+                            .frame(width: frameWidth, height: frameHeight)
+                            .background(Color.clear)
+                    }
+                    .frame(width: frameWidth, height: frameHeight)
+                    .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                }
+                .frame(height: 300)
+                
+                Spacer()
+                
+                // Bottom section - Capture controls at very bottom
                 VStack(spacing: 20) {
                     // Main capture button
                     Button(action: {
@@ -221,7 +189,7 @@ struct CameraCaptureView: View {
                     }
                 }
                 .padding(.horizontal, 40)
-                .padding(.bottom, 120)
+                .padding(.bottom, -70)
             }
         }
         .onAppear {
@@ -327,6 +295,7 @@ struct CameraPreviewView: UIViewRepresentable {
     func makeUIView(context: Context) -> UIView {
         let view = UIView()
         view.backgroundColor = .black
+        view.contentMode = .scaleAspectFill
         cameraManager.setupPreview(in: view)
         return view
     }
