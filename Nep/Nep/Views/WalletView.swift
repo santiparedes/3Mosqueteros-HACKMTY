@@ -118,6 +118,7 @@ struct WalletHeaderView: View {
 // MARK: - Total Balance Card
 struct TotalBalanceCard: View {
     let balance: Double
+    @State private var isBalanceHidden = false
     
     var body: some View {
         VStack(spacing: 16) {
@@ -129,35 +130,44 @@ struct TotalBalanceCard: View {
                 Spacer()
                 
                 Button(action: {
-                    // Hide/show balance
+                    isBalanceHidden.toggle()
                 }) {
-                    Image(systemName: "eye")
+                    Image(systemName: isBalanceHidden ? "eye.slash" : "eye")
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.nepTextSecondary)
                 }
             }
             
             HStack {
-                Text("$\(String(format: "%.2f", balance))")
-                    .font(.system(size: 32, weight: .bold))
-                    .foregroundColor(.nepTextLight)
+                if isBalanceHidden {
+                    // Show dots like password field, keeping the $ sign
+                    Text("$ ••••••")
+                        .font(.system(size: 32, weight: .bold))
+                        .foregroundColor(.nepTextLight)
+                } else {
+                    Text("$ \(String(format: "%.2f", balance))")
+                        .font(.system(size: 32, weight: .bold))
+                        .foregroundColor(.nepTextLight)
+                }
                 
                 Spacer()
                 
-                // Balance trend indicator
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.up.right")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.nepAccent)
-                    
-                    Text("+2.5%")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.nepAccent)
+                // Balance trend indicator (only show when balance is visible)
+                if !isBalanceHidden {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.up.right")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.nepAccent)
+                        
+                        Text("+2.5%")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.nepAccent)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.nepAccent.opacity(0.1))
+                    .cornerRadius(8)
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Color.nepAccent.opacity(0.1))
-                .cornerRadius(8)
             }
         }
         .padding(20)

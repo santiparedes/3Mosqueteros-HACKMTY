@@ -5,32 +5,29 @@ struct WelcomeView: View {
     
     var body: some View {
         ZStack {
-            // Background with gradient and grid pattern
-            LinearGradient(
-                gradient: Gradient(colors: [Color.nepBackground, Color.white]),
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-            
-            // Grid pattern overlay
-            GridPattern()
-                .opacity(0.1)
+            // Grainy gradient background
+            GrainyGradientView.welcomeGradient()
+                .ignoresSafeArea()
             
             VStack(spacing: 40) {
                 Spacer()
                 
                 // Logo
                 VStack(spacing: 20) {
-                    // Asterisk logo
+                    //  logo
                     ZStack {
                         Circle()
                             .fill(Color.nepBlue)
                             .frame(width: 120, height: 120)
                         
-                        Image(systemName: "asterisk")
+                        Image("Star")
+                            .resizable(resizingMode: .stretch)
+                            .aspectRatio(contentMode: .fill)
                             .font(.system(size: 60, weight: .bold))
                             .foregroundColor(.white)
+                            .frame(width: 90, height: 90)
+                            .colorInvert()
+                        
                     }
                     .scaleEffect(isAnimating ? 1.1 : 1.0)
                     .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isAnimating)
@@ -40,12 +37,12 @@ struct WelcomeView: View {
                         Text("TOMORROW'S BANKING IS HERE")
                             .font(.system(size: 28, weight: .bold))
                             .multilineTextAlignment(.center)
-                            .foregroundColor(.nepTextPrimary)
+                            .foregroundColor(.white)
                         
                         Text("Experience banking reimagined for the digital age — secure, intuitive, and built for the way you live today.")
                             .font(.system(size: 16, weight: .medium))
                             .multilineTextAlignment(.center)
-                            .foregroundColor(.nepTextSecondary)
+                            .foregroundColor(.white .opacity(0.5))
                             .padding(.horizontal, 20)
                     }
                 }
@@ -71,8 +68,9 @@ struct WelcomeView: View {
                         // Navigate to login
                     }) {
                         Text("I Am Already a Customer")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.nepTextSecondary)
+                            .font(.system(size: 20, weight: .medium))
+                            .foregroundColor(.white .opacity(0.5))
+                            .bold()
                     }
                 }
                 .padding(.horizontal, 32)
@@ -112,4 +110,5 @@ struct GridPattern: View {
 
 #Preview {
     WelcomeView()
+        .preferredColorScheme(.dark)
 }

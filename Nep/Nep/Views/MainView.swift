@@ -823,4 +823,5 @@ struct ProfileOptionButton: View {
 
 #Preview {
     MainView()
+        .preferredColorScheme(.dark)
 }

@@ -14,7 +14,8 @@ struct CardDetailsView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color.nepDarkBackground
+                // Grainy gradient background
+                GrainyGradientView.backgroundGradient()
                     .ignoresSafeArea()
                 
                 ScrollView {
@@ -277,17 +278,13 @@ struct CardDisplayView: View {
     
     var body: some View {
         ZStack {
-            // Card background with gradient
-            RoundedRectangle(cornerRadius: 20)
-                .fill(
-                    LinearGradient(
-                        gradient: Gradient(colors: [Color.nepBlue, Color.nepLightBlue]),
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: 320, height: 200)
-                .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
+            // Card background with grainy gradient
+            ZStack {
+                GrainyGradientView.cardGradient()
+                    .clipShape(RoundedRectangle(cornerRadius: 20))
+            }
+            .frame(width: 320, height: 200)
+            .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
             
             VStack {
                 HStack {
@@ -302,9 +299,13 @@ struct CardDisplayView: View {
                 Spacer()
                 
                 // Logo
-                Image(systemName: "asterisk")
-                    .font(.system(size: 60, weight: .bold))
+                Image("Star")
+                    .resizable(resizingMode: .stretch)
+                    .colorInvert()
+                    .aspectRatio(contentMode: .fill)
+                    .font(.system(size: 30, weight: .bold))
                     .foregroundColor(.white)
+                    .frame(width: 100, height: 100)
                 
                 Spacer()
                 
@@ -329,16 +330,36 @@ struct CardDisplayView: View {
 
 struct BalanceView: View {
     let balance: Double
+    @State private var isBalanceHidden = false
     
     var body: some View {
         VStack(spacing: 8) {
-            Text("Total Balance")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(.nepTextSecondary)
+            HStack {
+                Text("Total Balance")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.nepTextSecondary)
+                
+                Spacer()
+                
+                Button(action: {
+                    isBalanceHidden.toggle()
+                }) {
+                    Image(systemName: isBalanceHidden ? "eye.slash" : "eye")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.nepTextSecondary)
+                }
+            }
             
-            Text(formatCurrency(balance))
-                .font(.system(size: 36, weight: .bold))
-                .foregroundColor(.nepTextLight)
+            if isBalanceHidden {
+                // Show dots like password field, keeping the $ sign
+                Text("$••••••")
+                    .font(.system(size: 36, weight: .bold))
+                    .foregroundColor(.nepTextLight)
+            } else {
+                Text(formatCurrency(balance))
+                    .font(.system(size: 36, weight: .bold))
+                    .foregroundColor(.nepTextLight)
+            }
         }
     }
     
@@ -422,4 +443,5 @@ struct CardInfoRow: View {
 
 #Preview {
     CardDetailsView()
+        .preferredColorScheme(.dark)
 }
