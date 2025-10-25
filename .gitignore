@@ -85,3 +85,4 @@ logs/
 # Temporary files
 *.tmp
 *.temp
+Nep/Nep/Utils/APIConfig.swift
