@@ -351,6 +351,7 @@ struct MainQuantumSecuritySection: View {
 
 struct MainView: View {
     @State private var isLoggedIn = false
+    @State private var isOnboardingComplete = false
     @StateObject private var viewModel = BankingViewModel()
     @StateObject private var quantumBridge = QuantumNessieBridge.shared
     @StateObject private var userManager = UserManager.shared
@@ -369,7 +370,11 @@ struct MainView: View {
     
     var body: some View {
         Group {
-            if isLoggedIn {
+            if !isLoggedIn {
+                WelcomeView(isLoggedIn: $isLoggedIn)
+            } else if !isOnboardingComplete {
+                ConsentView(isOnboardingComplete: $isOnboardingComplete)
+            } else if isLoggedIn {
                 ZStack {
                     Color.nepDarkBackground
                         .ignoresSafeArea()
@@ -438,8 +443,6 @@ struct MainView: View {
                 .fullScreenCover(isPresented: $showSettings) {
                     SettingsView()
                 }
-            } else {
-                WelcomeView(isLoggedIn: $isLoggedIn)
             }
         }
     }
