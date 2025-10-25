@@ -23,22 +23,27 @@ class BankingViewModel: ObservableObject {
         
         Task {
             do {
-                // Load user data from Nessie API
-                let customers = try await nessieAPI.getCustomers()
-                if let firstCustomer = customers.first {
+                // Use the current demo user from UserManager
+                let userManager = UserManager.shared
+                let currentDemoUser = userManager.currentUser!
+                
+                // Get Nessie customer for this demo user
+                let firstCustomer = try await userManager.getNessieCustomerForDemoUser(currentDemoUser)
+                
+                if let customer = firstCustomer {
                     // Convert NessieCustomer to User
                     let user = User(
-                        id: firstCustomer.id,
-                        firstName: firstCustomer.firstName,
-                        lastName: firstCustomer.lastName,
-                        email: "\(firstCustomer.firstName.lowercased()).\(firstCustomer.lastName.lowercased())@example.com",
-                        phone: nil,
+                        id: customer.id,
+                        firstName: customer.firstName,
+                        lastName: customer.lastName,
+                        email: currentDemoUser.email,
+                        phone: currentDemoUser.phone,
                         address: Address(
-                            streetNumber: firstCustomer.address.streetNumber,
-                            streetName: firstCustomer.address.streetName,
-                            city: firstCustomer.address.city,
-                            state: firstCustomer.address.state,
-                            zip: firstCustomer.address.zip
+                            streetNumber: customer.address.streetNumber,
+                            streetName: customer.address.streetName,
+                            city: customer.address.city,
+                            state: customer.address.state,
+                            zip: customer.address.zip
                         ),
                         accounts: nil,
                         cards: nil
@@ -49,7 +54,7 @@ class BankingViewModel: ObservableObject {
                     }
                     
                     // Load accounts for the user
-                    let userAccounts = try await nessieAPI.getCustomerAccounts(customerId: firstCustomer.id)
+                    let userAccounts = try await nessieAPI.getCustomerAccounts(customerId: customer.id)
                     // Convert NessieAccount to Account
                     let accounts = userAccounts.map { nessieAccount in
                         Account(
@@ -88,9 +93,23 @@ class BankingViewModel: ObservableObject {
                         }
                     }
                     
-                    // For now, use mock cards since Nessie doesn't have cards API
+                    // Convert Nessie accounts to cards
+                    let cards = userAccounts.map { account in
+                        Card(
+                            id: account.id,
+                            nickname: account.nickname,
+                            type: account.type,
+                            accountId: account.id,
+                            customerId: account.customerId,
+                            cardNumber: generateCardNumber(from: account.id),
+                            expirationDate: "12/26",
+                            cvc: "123",
+                            isActive: true
+                        )
+                    }
+                    
                     await MainActor.run {
-                        self.cards = MockData.sampleCards
+                        self.cards = cards
                     }
                 }
                 
@@ -154,6 +173,14 @@ class BankingViewModel: ObservableObject {
     }
     
     // MARK: - Helper Methods
+    private func generateCardNumber(from accountId: String) -> String {
+        // Generate a card number based on the account ID
+        // Take last 4 characters of account ID and pad with zeros
+        let lastFour = String(accountId.suffix(4))
+        let padded = lastFour.padding(toLength: 4, withPad: "0", startingAt: 0)
+        return "5231 7252 1769 \(padded)"
+    }
+    
     private func generateCardNumber() -> String {
         let numbers = (0..<16).map { _ in Int.random(in: 0...9) }
         let grouped = numbers.chunked(into: 4).map { $0.map(String.init).joined() }

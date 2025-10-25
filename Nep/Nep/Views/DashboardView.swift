@@ -2,7 +2,12 @@ import SwiftUI
 
 struct DashboardView: View {
     @StateObject private var viewModel = BankingViewModel()
+    @StateObject private var quantumBridge = QuantumNessieBridge.shared
+    @StateObject private var userManager = UserManager.shared
     @State private var selectedAccountIndex = 0
+    @State private var showQuantumWallet = false
+    @State private var quantumWalletId: String = ""
+    @State private var showUserSelection = false
     
     var body: some View {
         ZStack {
@@ -11,8 +16,8 @@ struct DashboardView: View {
             
             ScrollView {
                 VStack(spacing: 24) {
-                    // Header
-                    HeaderView()
+                    // Header with User Info
+                    HeaderView(userManager: userManager, showUserSelection: $showUserSelection)
                     
                     // Currency balances
                     CurrencyBalancesView()
@@ -24,7 +29,12 @@ struct DashboardView: View {
                     AccountSelectorView(accounts: viewModel.accounts, selectedIndex: $selectedAccountIndex)
                     
                     // Action buttons
-                    ActionButtonsView()
+                    ActionButtonsView(quantumWalletId: $quantumWalletId, userManager: userManager)
+                    
+                    // Quantum Wallet Section
+                    if !quantumWalletId.isEmpty {
+                        QuantumWalletSection(quantumWalletId: quantumWalletId)
+                    }
                     
                     // Transactions
                     TransactionsView(transactions: viewModel.getRecentTransactions())
@@ -34,6 +44,9 @@ struct DashboardView: View {
         }
         .onAppear {
             viewModel.loadMockData()
+            Task {
+                await quantumBridge.loadMockData()
+            }
         }
     }
     
@@ -43,9 +56,231 @@ struct DashboardView: View {
     }
 }
 
-struct HeaderView: View {
+struct QuantumWalletSection: View {
+    let quantumWalletId: String
+    @StateObject private var quantumAPI = QuantumAPI.shared
+    @State private var showPaymentForm = false
+    @State private var toWalletId = ""
+    @State private var amount: Double = 100.0
+    
     var body: some View {
-        HStack {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Image(systemName: "shield.lefthalf.filled")
+                    .foregroundColor(.nepBlue)
+                    .font(.title2)
+                
+                Text("Quantum Wallet")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.nepTextLight)
+                
+                Spacer()
+                
+                Button("Send") {
+                    showPaymentForm = true
+                }
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(.nepBlue)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color.nepBlue.opacity(0.1))
+                .cornerRadius(8)
+            }
+            
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Wallet ID")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.nepTextSecondary)
+                
+                Text(quantumWalletId)
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundColor(.nepTextLight)
+                    .padding(8)
+                    .background(Color.nepCardBackground.opacity(0.1))
+                    .cornerRadius(6)
+            }
+            
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Security Level")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.nepTextSecondary)
+                    
+                    Text("Post-Quantum")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.nepAccent)
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text("Status")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.nepTextSecondary)
+                    
+                    Text("Active")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.nepAccent)
+                }
+            }
+        }
+        .padding(16)
+        .background(Color.nepCardBackground.opacity(0.1))
+        .cornerRadius(12)
+        .sheet(isPresented: $showPaymentForm) {
+            QuantumPaymentSheet(
+                fromWalletId: quantumWalletId,
+                toWalletId: $toWalletId,
+                amount: $amount
+            )
+        }
+    }
+}
+
+struct QuantumPaymentSheet: View {
+    let fromWalletId: String
+    @Binding var toWalletId: String
+    @Binding var amount: Double
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var quantumAPI = QuantumAPI.shared
+    @State private var isLoading = false
+    @State private var errorMessage: String?
+    @State private var successMessage: String?
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section("Payment Details") {
+                    TextField("To Wallet ID", text: $toWalletId)
+                        .font(.system(.body, design: .monospaced))
+                    
+                    HStack {
+                        Text("Amount")
+                        Spacer()
+                        TextField("Amount", value: $amount, format: .currency(code: "USD"))
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                    }
+                }
+                
+                if let error = errorMessage {
+                    Section {
+                        Text(error)
+                            .foregroundColor(.red)
+                            .font(.caption)
+                    }
+                }
+                
+                if let success = successMessage {
+                    Section {
+                        Text(success)
+                            .foregroundColor(.green)
+                            .font(.caption)
+                    }
+                }
+            }
+            .navigationTitle("Quantum Payment")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Send") {
+                        Task {
+                            await sendPayment()
+                        }
+                    }
+                    .disabled(isLoading || toWalletId.isEmpty)
+                }
+            }
+        }
+    }
+    
+    private func sendPayment() async {
+        isLoading = true
+        errorMessage = nil
+        successMessage = nil
+        
+        do {
+            // Prepare transaction
+            let prepareResponse = try await quantumAPI.prepareTransaction(
+                walletId: fromWalletId,
+                to: toWalletId,
+                amount: amount,
+                currency: "USD"
+            )
+            
+            // Sign with quantum signature
+            let signer = Ed25519QuantumSigner()
+            let payloadData = try JSONEncoder().encode(prepareResponse.payload)
+            let (publicKey, privateKey) = signer.generateKeyPair()
+            let signature = try signer.sign(payload: payloadData, privateKey: privateKey)
+            
+            // Submit transaction
+            let submitResponse = try await quantumAPI.submitTransaction(
+                payload: prepareResponse.payload,
+                signature: signature,
+                publicKey: publicKey
+            )
+            
+            successMessage = "Payment sent successfully! TX ID: \(submitResponse.txId)"
+            
+            // Auto-dismiss after success
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                dismiss()
+            }
+            
+        } catch {
+            errorMessage = "Failed to send payment: \(error.localizedDescription)"
+        }
+        
+        isLoading = false
+    }
+}
+
+struct HeaderView: View {
+    @ObservedObject var userManager: UserManager
+    @Binding var showUserSelection: Bool
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            // User info and controls
+            HStack {
+                // Current user info
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Welcome back,")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.nepTextSecondary)
+                    
+                    Text(userManager.getCurrentUserDisplayName())
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.nepTextLight)
+                }
+                
+                Spacer()
+                
+                // User selection and notification icons
+                HStack(spacing: 16) {
+                    Button(action: {
+                        showUserSelection = true
+                    }) {
+                        Image(systemName: "person.2.circle")
+                            .font(.system(size: 20))
+                            .foregroundColor(.nepBlue)
+                    }
+                    
+                    Button(action: {}) {
+                        Image(systemName: "bell")
+                            .font(.system(size: 20))
+                            .foregroundColor(.nepTextLight)
+                    }
+                }
+            }
+            
             // Search bar
             HStack {
                 Image(systemName: "magnifyingglass")
@@ -58,22 +293,96 @@ struct HeaderView: View {
             .padding(.vertical, 12)
             .background(Color.nepCardBackground)
             .cornerRadius(25)
-            
-            Spacer()
-            
-            // Notification and profile icons
-            HStack(spacing: 16) {
-                Button(action: {}) {
-                    Image(systemName: "bell")
-                        .font(.system(size: 20))
-                        .foregroundColor(.nepTextLight)
-                }
+        }
+        .sheet(isPresented: $showUserSelection) {
+            UserSelectionSheet(userManager: userManager)
+        }
+    }
+}
+
+struct UserSelectionSheet: View {
+    @ObservedObject var userManager: UserManager
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedUser: DemoUser?
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 24) {
+                Text("Demo Users for Presentation")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(.nepTextLight)
+                    .padding(.top)
                 
-                Button(action: {}) {
-                    Image(systemName: "person.circle")
-                        .font(.system(size: 24))
-                        .foregroundColor(.nepTextLight)
+                Text("Select a user to demonstrate quantum banking features")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.nepTextSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+                
+                UserSelectionView(
+                    userManager: userManager,
+                    selectedUser: $selectedUser,
+                    onUserSelected: { user in
+                        userManager.switchToUser(user)
+                        dismiss()
+                    }
+                )
+                .padding(.horizontal)
+                
+                Spacer()
+            }
+            .background(Color.nepDarkBackground)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
                 }
+            }
+        }
+    }
+}
+
+struct UserSelectionView: View {
+    @ObservedObject var userManager: UserManager
+    @Binding var selectedUser: DemoUser?
+    let onUserSelected: (DemoUser) -> Void
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Select Demo User")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundColor(.nepTextLight)
+            
+            ForEach(userManager.demoUsers) { user in
+                Button(action: {
+                    selectedUser = user
+                    onUserSelected(user)
+                }) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(user.fullName)
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.nepTextLight)
+                            
+                            Text(user.email)
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.nepTextSecondary)
+                        }
+                        
+                        Spacer()
+                        
+                        if selectedUser?.id == user.id {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.nepBlue)
+                        }
+                    }
+                    .padding()
+                    .background(selectedUser?.id == user.id ? Color.nepBlue.opacity(0.1) : Color.nepCardBackground.opacity(0.1))
+                    .cornerRadius(12)
+                }
+                .buttonStyle(PlainButtonStyle())
             }
         }
     }
@@ -203,26 +512,46 @@ struct AccountCard: View {
 }
 
 struct ActionButtonsView: View {
+    @Binding var quantumWalletId: String
+    @ObservedObject var userManager: UserManager
+    @StateObject private var quantumAPI = QuantumAPI.shared
+    @State private var isLoading = false
+    
     let actions = [
         ("ADD", "plus"),
         ("SEND", "arrow.up"),
         ("CONVERT", "arrow.left.arrow.right"),
-        ("MORE", "ellipsis")
+        ("QUANTUM", "shield.lefthalf.filled")
     ]
     
     var body: some View {
         HStack(spacing: 20) {
             ForEach(actions, id: \.0) { action in
                 VStack(spacing: 8) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.nepCardBackground)
-                            .frame(width: 60, height: 60)
-                        
-                        Image(systemName: action.1)
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.nepTextLight)
+                    Button(action: {
+                        if action.0 == "QUANTUM" {
+                            Task {
+                                await createQuantumWallet()
+                            }
+                        }
+                    }) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(action.0 == "QUANTUM" && !quantumWalletId.isEmpty ? Color.nepBlue : Color.nepCardBackground)
+                                .frame(width: 60, height: 60)
+                            
+                            if isLoading && action.0 == "QUANTUM" {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    .scaleEffect(0.8)
+                            } else {
+                                Image(systemName: action.1)
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundColor(action.0 == "QUANTUM" && !quantumWalletId.isEmpty ? .white : .nepTextLight)
+                            }
+                        }
                     }
+                    .disabled(isLoading && action.0 == "QUANTUM")
                     
                     Text(action.0)
                         .font(.system(size: 12, weight: .medium))
@@ -230,6 +559,23 @@ struct ActionButtonsView: View {
                 }
             }
         }
+    }
+    
+    private func createQuantumWallet() async {
+        guard quantumWalletId.isEmpty else { return }
+        
+        isLoading = true
+        
+        do {
+            let wallet = try await quantumAPI.createWallet(userId: userManager.getCurrentUserId())
+            await MainActor.run {
+                quantumWalletId = wallet.walletId
+            }
+        } catch {
+            print("Failed to create quantum wallet: \(error)")
+        }
+        
+        isLoading = false
     }
 }
 

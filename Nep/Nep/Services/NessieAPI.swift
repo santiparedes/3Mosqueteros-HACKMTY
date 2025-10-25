@@ -21,12 +21,39 @@ class NessieAPI: ObservableObject {
         )
     }
     
+    func getCustomer(customerId: String) async throws -> NessieCustomer {
+        return try await performRequest(
+            endpoint: "/customers/\(customerId)",
+            method: "GET",
+            body: nil as String?,
+            responseType: NessieCustomer.self
+        )
+    }
+    
     func createCustomer(_ customer: NessieCustomerCreate) async throws -> NessieCustomerResponse {
         return try await performRequest(
             endpoint: "/customers",
             method: "POST",
             body: customer,
             responseType: NessieCustomerResponse.self
+        )
+    }
+    
+    func updateCustomer(customerId: String, customer: NessieCustomerCreate) async throws -> NessieCustomerResponse {
+        return try await performRequest(
+            endpoint: "/customers/\(customerId)",
+            method: "PUT",
+            body: customer,
+            responseType: NessieCustomerResponse.self
+        )
+    }
+    
+    func getAccountCustomer(accountId: String) async throws -> NessieCustomer {
+        return try await performRequest(
+            endpoint: "/accounts/\(accountId)/customer",
+            method: "GET",
+            body: nil as String?,
+            responseType: NessieCustomer.self
         )
     }
     
@@ -208,7 +235,7 @@ struct NessieAccount: Codable, Identifiable {
     let nickname: String
     let rewards: Int
     let balance: Double
-    let accountNumber: String
+    let accountNumber: String?
     let customerId: String
     
     enum CodingKeys: String, CodingKey {
@@ -216,6 +243,30 @@ struct NessieAccount: Codable, Identifiable {
         case type, nickname, rewards, balance
         case accountNumber = "account_number"
         case customerId = "customer_id"
+    }
+    
+    init(id: String, type: String, nickname: String, rewards: Int, balance: Double, accountNumber: String? = nil, customerId: String) {
+        self.id = id
+        self.type = type
+        self.nickname = nickname
+        self.rewards = rewards
+        self.balance = balance
+        self.accountNumber = accountNumber
+        self.customerId = customerId
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        id = try container.decode(String.self, forKey: .id)
+        type = try container.decode(String.self, forKey: .type)
+        nickname = try container.decode(String.self, forKey: .nickname)
+        rewards = try container.decode(Int.self, forKey: .rewards)
+        balance = try container.decode(Double.self, forKey: .balance)
+        customerId = try container.decode(String.self, forKey: .customerId)
+        
+        // account_number is optional and may not be present in the API response
+        accountNumber = try container.decodeIfPresent(String.self, forKey: .accountNumber)
     }
 }
 

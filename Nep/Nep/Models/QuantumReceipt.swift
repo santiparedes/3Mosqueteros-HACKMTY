@@ -1,7 +1,8 @@
 import Foundation
 
 // MARK: - Quantum Receipt Models
-struct QuantumReceipt: Codable {
+struct QuantumReceipt: Codable, Identifiable {
+    let id: String
     let tx: TransactionPayload
     let sigPqc: String
     let pubkeyPqc: String
@@ -9,11 +10,22 @@ struct QuantumReceipt: Codable {
     let merkleProof: [ProofItem]
     
     enum CodingKeys: String, CodingKey {
+        case id
         case tx
         case sigPqc = "sig_pqc"
         case pubkeyPqc = "pubkey_pqc"
         case blockHeader = "block_header"
         case merkleProof = "merkle_proof"
+    }
+    
+    // Custom initializer to generate ID if not provided
+    init(tx: TransactionPayload, sigPqc: String, pubkeyPqc: String, blockHeader: BlockHeader, merkleProof: [ProofItem], id: String? = nil) {
+        self.tx = tx
+        self.sigPqc = sigPqc
+        self.pubkeyPqc = pubkeyPqc
+        self.blockHeader = blockHeader
+        self.merkleProof = merkleProof
+        self.id = id ?? UUID().uuidString
     }
 }
 

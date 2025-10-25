@@ -251,67 +251,33 @@ enum QuantumNessieBridgeError: Error, LocalizedError {
     }
 }
 
-// MARK: - Mock Data for Testing
+// MARK: - Real Data Loading
 extension QuantumNessieBridge {
     func loadMockData() async {
-        // Create mock Nessie customers
-        let mockCustomers = [
-            NessieCustomer(
-                id: "customer_001",
-                firstName: "Alice",
-                lastName: "Johnson",
-                address: NessieAddress(
-                    streetNumber: "123",
-                    streetName: "Main St",
-                    city: "Austin",
-                    state: "TX",
-                    zip: "78701"
-                )
-            ),
-            NessieCustomer(
-                id: "customer_002",
-                firstName: "Bob",
-                lastName: "Smith",
-                address: NessieAddress(
-                    streetNumber: "456",
-                    streetName: "Oak Ave",
-                    city: "Austin",
-                    state: "TX",
-                    zip: "78702"
-                )
-            )
-        ]
-        
-        await MainActor.run {
-            self.nessieCustomers = mockCustomers
+        // Load real Nessie customers and accounts
+        do {
+            let nessieAPI = NessieAPI.shared
+            let customers = try await nessieAPI.getCustomers()
+            
+            await MainActor.run {
+                self.nessieCustomers = customers
+            }
+            
+            // Load accounts for each customer
+            var allAccounts: [NessieAccount] = []
+            for customer in customers {
+                let accounts = try await nessieAPI.getCustomerAccounts(customerId: customer.id)
+                allAccounts.append(contentsOf: accounts)
+            }
+            
+            await MainActor.run {
+                self.nessieAccounts = allAccounts
+            }
+            
+            print("✅ Real Nessie data loaded successfully")
+            print("📊 Found \(customers.count) customers and \(allAccounts.count) accounts")
+        } catch {
+            print("❌ Failed to load Nessie data: \(error)")
         }
-        
-        // Create mock accounts
-        let mockAccounts = [
-            NessieAccount(
-                id: "account_001",
-                type: "Checking",
-                nickname: "Alice's Quantum Wallet",
-                rewards: 0,
-                balance: 2500.0,
-                accountNumber: "1234567890",
-                customerId: "customer_001"
-            ),
-            NessieAccount(
-                id: "account_002",
-                type: "Savings",
-                nickname: "Bob's Quantum Wallet",
-                rewards: 0,
-                balance: 1800.0,
-                accountNumber: "0987654321",
-                customerId: "customer_002"
-            )
-        ]
-        
-        await MainActor.run {
-            self.nessieAccounts = mockAccounts
-        }
-        
-        print("✅ Mock data loaded successfully")
     }
 }

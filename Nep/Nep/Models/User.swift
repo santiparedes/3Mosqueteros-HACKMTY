@@ -28,7 +28,7 @@ struct Account: Codable, Identifiable {
     let nickname: String
     let rewards: Int
     let balance: Double
-    let accountNumber: String
+    let accountNumber: String?
     let type: String
     let customerId: String
 }

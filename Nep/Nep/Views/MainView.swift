@@ -15,40 +15,33 @@ struct MainView: View {
                         }
                         .tag(0)
                     
-                    QuantumBankingView()
-                        .tabItem {
-                            Image(systemName: "shield.lefthalf.filled")
-                            Text("Quantum")
-                        }
-                        .tag(1)
-                    
                     CardDetailsView()
                         .tabItem {
                             Image(systemName: "asterisk")
                             Text("Card")
                         }
-                        .tag(2)
+                        .tag(1)
                     
                     AddView()
                         .tabItem {
-                            Image(systemName: "plus")
-                            Text("Add")
+                            Image(systemName: "wrench.and.screwdriver")
+                            Text("Debug")
                         }
-                        .tag(3)
+                        .tag(2)
                     
                     MenuView()
                         .tabItem {
                             Image(systemName: "ellipsis")
                             Text("Menu")
                         }
-                        .tag(4)
+                        .tag(3)
                     
                     ProfileView()
                         .tabItem {
                             Image(systemName: "person")
                             Text("Profile")
                         }
-                        .tag(5)
+                        .tag(4)
                 }
                 .accentColor(.nepBlue)
             } else {
@@ -65,57 +58,240 @@ struct MainView: View {
 }
 
 struct AddView: View {
+    @StateObject private var quantumBridge = QuantumNessieBridge.shared
+    @StateObject private var nessieAPI = NessieAPI.shared
+    @StateObject private var userManager = UserManager.shared
+    @State private var debugMessages: [String] = []
+    @State private var isLoading = false
+    
     var body: some View {
         ZStack {
             Color.nepDarkBackground
                 .ignoresSafeArea()
             
-            VStack(spacing: 24) {
-                Text("Add Money")
-                    .font(.system(size: 28, weight: .bold))
-                    .foregroundColor(.nepTextLight)
-                
-                Text("Choose how you'd like to add money to your account")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.nepTextSecondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
-                
-                VStack(spacing: 16) {
-                    AddOptionButton(
-                        title: "Bank Transfer",
-                        subtitle: "Transfer from your bank account",
-                        icon: "arrow.down.circle"
-                    )
+            ScrollView {
+                VStack(spacing: 24) {
+                    Text("Debug Actions")
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundColor(.nepTextLight)
                     
-                    AddOptionButton(
-                        title: "Credit Card",
-                        subtitle: "Add money using a credit card",
-                        icon: "creditcard"
-                    )
+                    Text("Test quantum banking features and API integrations")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.nepTextSecondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
                     
-                    AddOptionButton(
-                        title: "Cash Deposit",
-                        subtitle: "Deposit cash at a partner location",
-                        icon: "banknote"
-                    )
+                    VStack(spacing: 16) {
+                        DebugActionButton(
+                            title: "Load Mock Data",
+                            subtitle: "Load sample customers and accounts",
+                            icon: "person.3",
+                            action: loadMockData
+                        )
+                        
+                        DebugActionButton(
+                            title: "Test Nessie API",
+                            subtitle: "Test Capital One API connection",
+                            icon: "network",
+                            action: testNessieAPI
+                        )
+                        
+                        DebugActionButton(
+                            title: "Create Quantum Wallet",
+                            subtitle: "Generate a new quantum wallet",
+                            icon: "shield.lefthalf.filled",
+                            action: createQuantumWallet
+                        )
+                        
+                        DebugActionButton(
+                            title: "Test Quantum Payment",
+                            subtitle: "Process a quantum payment",
+                            icon: "arrow.left.arrow.right",
+                            action: testQuantumPayment
+                        )
+                        
+                        DebugActionButton(
+                            title: "Find ATMs",
+                            subtitle: "Test location services",
+                            icon: "location",
+                            action: findATMs
+                        )
+                        
+                        DebugActionButton(
+                            title: "Show Nessie Customers",
+                            subtitle: "List all available customers",
+                            icon: "person.3.fill",
+                            action: showNessieCustomers
+                        )
+                    }
+                    .padding(.horizontal, 20)
+                    
+                    // Debug Messages
+                    if !debugMessages.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Debug Log")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(.nepTextLight)
+                            
+                            ScrollView {
+                                LazyVStack(alignment: .leading, spacing: 4) {
+                                    ForEach(debugMessages.indices, id: \.self) { index in
+                                        Text(debugMessages[index])
+                                            .font(.system(size: 12, design: .monospaced))
+                                            .foregroundColor(.nepTextSecondary)
+                                            .padding(8)
+                                            .background(Color.nepCardBackground.opacity(0.1))
+                                            .cornerRadius(6)
+                                    }
+                                }
+                            }
+                            .frame(maxHeight: 200)
+                        }
+                        .padding(.horizontal, 20)
+                    }
+                    
+                    Spacer()
                 }
-                .padding(.horizontal, 20)
-                
-                Spacer()
+                .padding(.top, 50)
             }
-            .padding(.top, 50)
+        }
+    }
+    
+    private func loadMockData() {
+        addDebugMessage("Loading mock data...")
+        Task {
+            await quantumBridge.loadMockData()
+            await MainActor.run {
+                addDebugMessage("✅ Mock data loaded successfully")
+                addDebugMessage("Customers: \(quantumBridge.nessieCustomers.count)")
+                addDebugMessage("Accounts: \(quantumBridge.nessieAccounts.count)")
+            }
+        }
+    }
+    
+    private func testNessieAPI() {
+        addDebugMessage("Testing Nessie API connection...")
+        Task {
+            do {
+                let customers = try await nessieAPI.getCustomers()
+                await MainActor.run {
+                    addDebugMessage("✅ Nessie API connected successfully")
+                    addDebugMessage("Found \(customers.count) customers")
+                }
+            } catch {
+                await MainActor.run {
+                    addDebugMessage("❌ Nessie API error: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+    
+    private func createQuantumWallet() {
+        addDebugMessage("Creating quantum wallet...")
+        Task {
+            do {
+                let wallet = try await QuantumAPI.shared.createWallet(userId: userManager.getCurrentUserId())
+                await MainActor.run {
+                    addDebugMessage("✅ Quantum wallet created")
+                    addDebugMessage("Wallet ID: \(wallet.walletId)")
+                }
+            } catch {
+                await MainActor.run {
+                    addDebugMessage("❌ Quantum wallet error: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+    
+    private func testQuantumPayment() {
+        addDebugMessage("Testing quantum payment...")
+        Task {
+            do {
+                // Create two wallets for testing
+                // Get the two demo users for presentation
+                let (sender, receiver) = userManager.getPresentationUsers()
+                let wallet1 = try await QuantumAPI.shared.createWallet(userId: sender.id)
+                let wallet2 = try await QuantumAPI.shared.createWallet(userId: receiver.id)
+                
+                // Process payment
+                let result = try await quantumBridge.processQuantumPayment(
+                    fromQuantumWallet: wallet1.walletId,
+                    toQuantumWallet: wallet2.walletId,
+                    amount: 100.0
+                )
+                
+                await MainActor.run {
+                    addDebugMessage("✅ Quantum payment successful")
+                    addDebugMessage("From: \(sender.fullName) → To: \(receiver.fullName)")
+                    addDebugMessage("Quantum TX: \(result.quantumTxId)")
+                    addDebugMessage("Nessie TX: \(result.nessieTxId)")
+                }
+            } catch {
+                await MainActor.run {
+                    addDebugMessage("❌ Quantum payment error: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+    
+    private func findATMs() {
+        addDebugMessage("Finding nearby ATMs...")
+        Task {
+            do {
+                let atms = try await nessieAPI.getATMs(latitude: 40.7128, longitude: -74.0060, radius: 5)
+                await MainActor.run {
+                    addDebugMessage("✅ Found \(atms.count) ATMs nearby")
+                    for atm in atms.prefix(3) {
+                        addDebugMessage("📍 \(atm.name) - \(atm.address.streetName)")
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    addDebugMessage("❌ ATM search error: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+    
+    private func showNessieCustomers() {
+        addDebugMessage("Loading Nessie customers...")
+        Task {
+            do {
+                let customers = try await userManager.getAvailableNessieCustomers()
+                await MainActor.run {
+                    addDebugMessage("✅ Found \(customers.count) Nessie customers:")
+                    for customer in customers {
+                        addDebugMessage("👤 \(customer.firstName) \(customer.lastName) - \(customer.address.city), \(customer.address.state)")
+                        addDebugMessage("   ID: \(customer.id)")
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    addDebugMessage("❌ Failed to load customers: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+    
+    private func addDebugMessage(_ message: String) {
+        let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .medium)
+        debugMessages.append("[\(timestamp)] \(message)")
+        
+        // Keep only last 20 messages
+        if debugMessages.count > 20 {
+            debugMessages.removeFirst()
         }
     }
 }
 
-struct AddOptionButton: View {
+struct DebugActionButton: View {
     let title: String
     let subtitle: String
     let icon: String
+    let action: () -> Void
     
     var body: some View {
-        Button(action: {}) {
+        Button(action: action) {
             HStack(spacing: 16) {
                 Image(systemName: icon)
                     .font(.system(size: 24))
@@ -136,9 +312,9 @@ struct AddOptionButton: View {
                 
                 Spacer()
                 
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.nepTextSecondary)
+                Image(systemName: "play.circle")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(.nepBlue)
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
