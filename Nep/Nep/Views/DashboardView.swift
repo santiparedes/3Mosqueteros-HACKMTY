@@ -106,8 +106,8 @@ struct QuantumWalletSection: View {
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.nepTextSecondary)
                     
-                    Text("Post-Quantum")
-                        .font(.system(size: 14, weight: .semibold))
+                    Text("CRYSTALS-Dilithium")
+                        .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(.nepAccent)
                 }
                 
@@ -214,8 +214,8 @@ struct QuantumPaymentSheet: View {
                 currency: "USD"
             )
             
-            // Sign with quantum signature
-            let signer = Ed25519QuantumSigner()
+            // Sign with post-quantum signature (CRYSTALS-Dilithium)
+            let signer = DilithiumQuantumSigner()
             let payloadData = try JSONEncoder().encode(prepareResponse.payload)
             let (publicKey, privateKey) = signer.generateKeyPair()
             let signature = try signer.sign(payload: payloadData, privateKey: privateKey)

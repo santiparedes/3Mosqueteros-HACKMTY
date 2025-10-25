@@ -28,20 +28,13 @@ struct MainView: View {
                             Text("Debug")
                         }
                         .tag(2)
-                    
-                    MenuView()
-                        .tabItem {
-                            Image(systemName: "ellipsis")
-                            Text("Menu")
-                        }
-                        .tag(3)
-                    
+                
                     ProfileView()
                         .tabItem {
                             Image(systemName: "person")
                             Text("Profile")
                         }
-                        .tag(4)
+                        .tag(3)
                 }
                 .accentColor(.nepBlue)
             } else {
@@ -324,83 +317,6 @@ struct DebugActionButton: View {
     }
 }
 
-struct MenuView: View {
-    var body: some View {
-        ZStack {
-            Color.nepDarkBackground
-                .ignoresSafeArea()
-            
-            VStack(spacing: 24) {
-                Text("Menu")
-                    .font(.system(size: 28, weight: .bold))
-                    .foregroundColor(.nepTextLight)
-                
-                VStack(spacing: 12) {
-                    MenuOptionButton(
-                        title: "Settings",
-                        icon: "gearshape"
-                    )
-                    
-                    MenuOptionButton(
-                        title: "Help & Support",
-                        icon: "questionmark.circle"
-                    )
-                    
-                    MenuOptionButton(
-                        title: "Security",
-                        icon: "shield"
-                    )
-                    
-                    MenuOptionButton(
-                        title: "Notifications",
-                        icon: "bell"
-                    )
-                    
-                    MenuOptionButton(
-                        title: "About",
-                        icon: "info.circle"
-                    )
-                }
-                .padding(.horizontal, 20)
-                
-                Spacer()
-            }
-            .padding(.top, 50)
-        }
-    }
-}
-
-struct MenuOptionButton: View {
-    let title: String
-    let icon: String
-    
-    var body: some View {
-        Button(action: {}) {
-            HStack(spacing: 16) {
-                Image(systemName: icon)
-                    .font(.system(size: 20))
-                    .foregroundColor(.nepBlue)
-                    .frame(width: 40, height: 40)
-                    .background(Color.nepBlue.opacity(0.1))
-                    .cornerRadius(20)
-                
-                Text(title)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.nepTextLight)
-                
-                Spacer()
-                
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.nepTextSecondary)
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
-            .background(Color.nepCardBackground.opacity(0.1))
-            .cornerRadius(12)
-        }
-    }
-}
 
 struct ProfileView: View {
     var body: some View {

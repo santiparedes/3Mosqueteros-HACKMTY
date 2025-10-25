@@ -102,8 +102,8 @@ class QuantumNessieBridge: ObservableObject {
             currency: "USD"
         )
         
-        // Step 2: Sign with quantum signature (using Ed25519 for demo)
-        let signer = Ed25519QuantumSigner()
+        // Step 2: Sign with post-quantum signature (CRYSTALS-Dilithium)
+        let signer = DilithiumQuantumSigner()
         let payloadData = try JSONEncoder().encode(prepareResponse.payload)
         let (publicKey, privateKey) = signer.generateKeyPair()
         let signature = try signer.sign(payload: payloadData, privateKey: privateKey)

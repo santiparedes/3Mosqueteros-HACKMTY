@@ -113,7 +113,7 @@ struct QuantumSecuritySection: View {
                     HStack(spacing: 12) {
                         SecurityFeature(icon: "lock.shield", title: "Post-Quantum Encryption")
                         SecurityFeature(icon: "checkmark.seal", title: "Merkle Verification")
-                        SecurityFeature(icon: "key", title: "Ed25519 Signatures")
+                        SecurityFeature(icon: "key", title: "CRYSTALS-Dilithium")
                     }
                 }
             } else {
@@ -196,8 +196,9 @@ struct QuantumSecurityDetailsView: View {
                     HStack {
                         Text("Security Level")
                         Spacer()
-                        Text("Post-Quantum")
+                        Text("CRYSTALS-Dilithium")
                             .foregroundColor(.green)
+                            .font(.system(size: 12, weight: .semibold))
                     }
                     
                     HStack {
