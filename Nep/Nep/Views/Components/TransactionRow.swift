@@ -98,5 +98,5 @@ struct TransactionRow: View {
         TransactionRow(transaction: Transaction.mockTransactions[2])
     }
     .padding()
-    .background(Color.nepDarkBackground)
+    .background(Color.darkBackground)
 }

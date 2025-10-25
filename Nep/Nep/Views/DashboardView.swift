@@ -11,7 +11,8 @@ struct DashboardView: View {
     
     var body: some View {
         ZStack {
-            Color.nepDarkBackground
+            // Grainy gradient background
+            GrainyGradientView.backgroundGradient()
                 .ignoresSafeArea()
             
             ScrollView {
@@ -491,23 +492,34 @@ struct AccountCard: View {
             RoundedRectangle(cornerRadius: 12)
                 .fill(isSelected ? Color.nepBlue : Color.nepCardBackground)
                 .frame(width: 60, height: 40)
-            
-            if isActive {
-                if isSelected {
-                    Image(systemName: "asterisk")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(.white)
+            Group{
+                if isActive {
+                    if isSelected {
+                        Image("Star")
+                            .resizable(resizingMode: .stretch)
+                            .aspectRatio(contentMode: .fill)
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.white)
+                            .colorInvert()
+                            .frame(width: 25, height: 25)
+                    } else {
+                        Image(systemName: "creditcard")
+                            .font(.system(size: 16))
+                            .foregroundColor(.nepTextSecondary)
+                    }
                 } else {
-                    Image(systemName: "creditcard")
+                    Image(systemName: "plus")
                         .font(.system(size: 16))
                         .foregroundColor(.nepTextSecondary)
                 }
-            } else {
-                Image(systemName: "plus")
-                    .font(.system(size: 16))
-                    .foregroundColor(.nepTextSecondary)
             }
+            
         }
+        .scaleEffect(isSelected ? 1.06 : 1.0)
+                .shadow(color: Color.black.opacity(isSelected ? 0.25 : 0.06), radius: isSelected ? 8 : 2, x: 0, y: isSelected ? 6 : 2)
+                .animation(.spring(response: 0.36, dampingFraction: 0.78), value: isSelected)
+                .frame(width: 60, height: 40)
+                .cornerRadius(12)
     }
 }
 
@@ -544,12 +556,12 @@ struct ActionButtonsView: View {
                             
                             if isLoading && action.0 == "QUANTUM" {
                                 ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .gray))
                                     .scaleEffect(0.8)
                             } else {
                                 Image(systemName: action.1)
                                     .font(.system(size: 20, weight: .semibold))
-                                    .foregroundColor(action.0 == "QUANTUM" && !quantumWalletId.isEmpty ? .white : .nepTextLight)
+                                    .foregroundColor(action.0 == "QUANTUM" && !quantumWalletId.isEmpty ? .gray : .nepTextLight)
                             }
                         }
                     }
@@ -614,4 +626,5 @@ struct TransactionsView: View {
 
 #Preview {
     DashboardView()
+        .preferredColorScheme(.dark)
 }

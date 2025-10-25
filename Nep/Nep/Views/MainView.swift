@@ -439,13 +439,7 @@ struct MainView: View {
                     SettingsView()
                 }
             } else {
-                WelcomeView()
-                    .onAppear {
-                        // Simulate login after 3 seconds for demo
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                            isLoggedIn = true
-                        }
-                    }
+                WelcomeView(isLoggedIn: $isLoggedIn)
             }
         }
     }
@@ -823,4 +817,5 @@ struct ProfileOptionButton: View {
 
 #Preview {
     MainView()
+        .preferredColorScheme(.dark)
 }
