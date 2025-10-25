@@ -1,42 +1,416 @@
 import SwiftUI
 
+// MARK: - Main Header View
+struct MainHeaderView: View {
+    @ObservedObject var userManager: UserManager
+    @Binding var showUserSelection: Bool
+    
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Welcome back")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.nepTextSecondary)
+                
+                if let user = userManager.currentUser {
+                    Text(user.firstName)
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.nepTextLight)
+                }
+            }
+            
+            Spacer()
+            
+            // Profile Avatar
+            Button(action: {
+                showUserSelection = true
+            }) {
+                ZStack {
+                    Circle()
+                        .fill(Color.nepBlue)
+                        .frame(width: 44, height: 44)
+                    
+                    if let user = userManager.currentUser {
+                        Text(user.firstName.prefix(1))
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundColor(.white)
+                    } else {
+                        Image(systemName: "person.fill")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.white)
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+// MARK: - Quick Actions Grid
+struct QuickActionsGrid: View {
+    @Binding var showSendMoney: Bool
+    @Binding var showAddMoney: Bool
+    @Binding var showCardDetails: Bool
+    @Binding var showQuantumWallet: Bool
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Quick Actions")
+                .font(.system(size: 20, weight: .bold))
+                .foregroundColor(.nepTextLight)
+            
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
+                // Send Money
+                Button(action: { showSendMoney = true }) {
+                    VStack(spacing: 12) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.nepBlue.opacity(0.2))
+                                .frame(width: 50, height: 50)
+                            
+                            Image(systemName: "arrow.up.circle.fill")
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundColor(.nepBlue)
+                        }
+                        
+                        Text("Send Money")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.nepTextLight)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 20)
+                    .background(Color.nepCardBackground.opacity(0.1))
+                    .cornerRadius(16)
+                }
+                
+                // Add Money
+                Button(action: { showAddMoney = true }) {
+                    VStack(spacing: 12) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.nepAccent.opacity(0.2))
+                                .frame(width: 50, height: 50)
+                            
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundColor(.nepAccent)
+                        }
+                        
+                        Text("Add Money")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.nepTextLight)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 20)
+                    .background(Color.nepCardBackground.opacity(0.1))
+                    .cornerRadius(16)
+                }
+                
+                // My Cards
+                Button(action: { showCardDetails = true }) {
+                    VStack(spacing: 12) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.nepWarning.opacity(0.2))
+                                .frame(width: 50, height: 50)
+                            
+                            Image(systemName: "creditcard.fill")
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundColor(.nepWarning)
+                        }
+                        
+                        Text("My Cards")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.nepTextLight)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 20)
+                    .background(Color.nepCardBackground.opacity(0.1))
+                    .cornerRadius(16)
+                }
+                
+                // Quantum Security
+                Button(action: { showQuantumWallet = true }) {
+                    VStack(spacing: 12) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.nepBlue.opacity(0.2))
+                                .frame(width: 50, height: 50)
+                            
+                            Image(systemName: "shield.lefthalf.filled")
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundColor(.nepBlue)
+                        }
+                        
+                        Text("Quantum Security")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.nepTextLight)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 20)
+                    .background(Color.nepCardBackground.opacity(0.1))
+                    .cornerRadius(16)
+                }
+            }
+        }
+    }
+}
+
+
+// MARK: - Recent Transactions Section
+struct RecentTransactionsSection: View {
+    let transactions: [Transaction]
+    @Binding var showTransactions: Bool
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Recent Transactions")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.nepTextLight)
+                
+                Spacer()
+                
+                Button("View All") {
+                    showTransactions = true
+                }
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.nepBlue)
+            }
+            
+            if transactions.isEmpty {
+                EmptyTransactionsView()
+            } else {
+                VStack(spacing: 12) {
+                    ForEach(Array(transactions.prefix(3))) { transaction in
+                        TransactionRow(transaction: transaction)
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+
+
+struct QuantumWalletView: View {
+    @Binding var quantumWalletId: String
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            VStack {
+                Text("Quantum Wallet")
+                    .font(.title)
+                    .padding()
+                
+                Text("This feature will be implemented soon")
+                    .foregroundColor(.secondary)
+                
+                Spacer()
+            }
+            .navigationTitle("Quantum Wallet")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct AllTransactionsView: View {
+    let transactions: [Transaction]
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            List(transactions) { transaction in
+                TransactionRow(transaction: transaction)
+            }
+            .navigationTitle("All Transactions")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct SettingsView: View {
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            VStack {
+                Text("Settings")
+                    .font(.title)
+                    .padding()
+                
+                Text("This feature will be implemented soon")
+                    .foregroundColor(.secondary)
+                
+                Spacer()
+            }
+            .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Simple Quantum Security Section for MainView
+struct MainQuantumSecuritySection: View {
+    let quantumWalletId: String
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Image(systemName: "shield.lefthalf.filled")
+                    .foregroundColor(.nepBlue)
+                    .font(.title2)
+                
+                Text("Quantum Security")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.nepTextLight)
+                
+                Spacer()
+                
+                Text("Active")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.nepAccent)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.nepAccent.opacity(0.1))
+                    .cornerRadius(8)
+            }
+            
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Your transactions are protected with post-quantum cryptography")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.nepTextSecondary)
+                
+                Text("Wallet ID: \(quantumWalletId.prefix(8))...")
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundColor(.nepTextLight)
+                    .padding(8)
+                    .background(Color.nepCardBackground.opacity(0.1))
+                    .cornerRadius(6)
+            }
+        }
+        .padding(16)
+        .background(Color.nepCardBackground.opacity(0.1))
+        .cornerRadius(12)
+    }
+}
+
 struct MainView: View {
-    @State private var selectedTab = 0
     @State private var isLoggedIn = false
+    @StateObject private var viewModel = BankingViewModel()
+    @StateObject private var quantumBridge = QuantumNessieBridge.shared
+    @StateObject private var userManager = UserManager.shared
+    @State private var selectedAccountIndex = 0
+    @State private var quantumWalletId: String = ""
+    @State private var showUserSelection = false
+    
+    // Navigation states
+    @State private var showCardDetails = false
+    @State private var showSendMoney = false
+    @State private var showAddMoney = false
+    @State private var showQuantumWallet = false
+    @State private var showTransactions = false
+    @State private var showSettings = false
+    @State private var selectedCard: Card?
     
     var body: some View {
         Group {
             if isLoggedIn {
-                TabView(selection: $selectedTab) {
-                    DashboardView()
-                        .tabItem {
-                            Image(systemName: "house")
-                            Text("Home")
-                        }
-                        .tag(0)
+                ZStack {
+                    Color.nepDarkBackground
+                        .ignoresSafeArea()
                     
-                    CardDetailsView()
-                        .tabItem {
-                            Image(systemName: "asterisk")
-                            Text("Card")
+                    ScrollView {
+                        VStack(spacing: 24) {
+                            // Header with User Info
+                            MainHeaderView(userManager: userManager, showUserSelection: $showUserSelection)
+                            
+                            // Total Balance Card
+                            TotalBalanceCard(balance: getTotalBalance())
+                            
+                            // Quick Actions Grid
+                            QuickActionsGrid(
+                                showSendMoney: $showSendMoney,
+                                showAddMoney: $showAddMoney,
+                                showCardDetails: $showCardDetails,
+                                showQuantumWallet: $showQuantumWallet
+                            )
+                            
+                            // Account Selector
+                            AccountSelectorView(accounts: viewModel.accounts, selectedIndex: $selectedAccountIndex)
+                            
+                            // Cards Section
+                            CardsSectionView(
+                                cards: viewModel.cards,
+                                showCardDetails: $showCardDetails,
+                                selectedCard: $selectedCard
+                            )
+                            
+                            // Quantum Security Section
+                            if !quantumWalletId.isEmpty {
+                                MainQuantumSecuritySection(quantumWalletId: quantumWalletId)
+                            }
+                            
+                            // Recent Transactions
+                            RecentTransactionsSection(
+                                transactions: viewModel.getRecentTransactions(),
+                                showTransactions: $showTransactions
+                            )
                         }
-                        .tag(1)
-                    
-                    AddView()
-                        .tabItem {
-                            Image(systemName: "wrench.and.screwdriver")
-                            Text("Debug")
-                        }
-                        .tag(2)
-                
-                    ProfileView()
-                        .tabItem {
-                            Image(systemName: "person")
-                            Text("Profile")
-                        }
-                        .tag(3)
+                        .padding(.horizontal, 20)
+                    }
                 }
-                .accentColor(.nepBlue)
+                .onAppear {
+                    viewModel.loadMockData()
+                    Task {
+                        await quantumBridge.loadMockData()
+                    }
+                }
+                .sheet(isPresented: $showCardDetails) {
+                    CardDetailsView()
+                }
+                .sheet(isPresented: $showSendMoney) {
+                    SendMoneyView()
+                }
+                .sheet(isPresented: $showAddMoney) {
+                    AddMoneyView()
+                }
+                .sheet(isPresented: $showQuantumWallet) {
+                    QuantumWalletView(quantumWalletId: $quantumWalletId)
+                }
+                .sheet(isPresented: $showTransactions) {
+                    AllTransactionsView(transactions: viewModel.getRecentTransactions())
+                }
+                .sheet(isPresented: $showSettings) {
+                    SettingsView()
+                }
             } else {
                 WelcomeView()
                     .onAppear {
@@ -47,6 +421,10 @@ struct MainView: View {
                     }
             }
         }
+    }
+    
+    private func getTotalBalance() -> Double {
+        return viewModel.accounts.reduce(0) { $0 + $1.balance }
     }
 }
 
