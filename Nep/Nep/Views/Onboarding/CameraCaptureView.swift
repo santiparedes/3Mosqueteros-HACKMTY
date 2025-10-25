@@ -5,9 +5,7 @@ import UIKit
 
 struct CameraCaptureView: View {
     @StateObject private var cameraManager = CameraManager()
-    @State private var currentSide: IDSide = .front
-    @State private var capturedImages: [IDSide: UIImage] = [:]
-    @State private var showImagePreview = false
+    @State private var capturedImage: UIImage?
     @State private var showProcessing = false
     @State private var showOCRResults = false
     @State private var ocrResults: OCRResults?
@@ -43,6 +41,7 @@ struct CameraCaptureView: View {
                 // Header
                 HStack {
                     Button(action: {
+                        print("DEBUG: User tapped close button")
                         dismiss()
                     }) {
                         Image(systemName: "xmark")
@@ -55,7 +54,7 @@ struct CameraCaptureView: View {
                     
                     Spacer()
                     
-                    Text("Captura de \(currentSide == .front ? "Frente" : "Reverso")")
+                    Text("Captura tu INE")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(.white)
                         .padding(.horizontal, 20)
@@ -65,18 +64,13 @@ struct CameraCaptureView: View {
                     
                     Spacer()
                     
-                    // Progress indicator and debug info
+                    // Debug info
                     VStack(spacing: 4) {
-                        HStack(spacing: 8) {
-                            ForEach(IDSide.allCases, id: \.self) { side in
-                                Circle()
-                                    .fill(capturedImages[side] != nil ? Color.nepBlue : Color.white.opacity(0.5))
-                                    .frame(width: 8, height: 8)
-                            }
-                        }
+                        Circle()
+                            .fill(capturedImage != nil ? Color.nepBlue : Color.white.opacity(0.5))
+                            .frame(width: 8, height: 8)
                         
-                        // Debug info
-                        Text(cameraManager.isSessionRunning ? "Cámara activa" : "Cámara inactiva")
+                        Text("INE")
                             .font(.system(size: 10, weight: .medium))
                             .foregroundColor(.white.opacity(0.8))
                     }
@@ -89,16 +83,19 @@ struct CameraCaptureView: View {
                 
                 Spacer()
                 
-                // INE Document frame guide
+                Spacer()
+                
+                // INE Document frame guide - moved much lower
                 VStack(spacing: 20) {
                     Text("Coloca tu INE dentro del marco")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
+                        .padding(.horizontal, 20)
                     
                     // INE-specific document frame with proper aspect ratio
                     GeometryReader { geometry in
-                        let frameWidth = min(geometry.size.width * 0.85, 320) // Max 320pt width
+                        let frameWidth = min(geometry.size.width * 0.8, 300) // Max 300pt width
                         let frameHeight = frameWidth * (85.6 / 53.98) // INE aspect ratio (85.6mm x 53.98mm)
                         
                         ZStack {
@@ -116,53 +113,34 @@ struct CameraCaptureView: View {
                             
                             // INE document frame
                             RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.nepBlue, lineWidth: 4)
+                                .stroke(Color.nepBlue, lineWidth: 3)
                                 .frame(width: frameWidth, height: frameHeight)
                                 .background(Color.clear)
                             
-                            // Enhanced corner guides for INE
+                            // Corner guides for INE
                             ForEach(0..<4) { index in
+                                let cornerSize: CGFloat = 20
+                                let cornerThickness: CGFloat = 3
+                                
                                 VStack(spacing: 0) {
                                     Rectangle()
                                         .fill(Color.nepBlue)
-                                        .frame(width: 25, height: 4)
+                                        .frame(width: cornerSize, height: cornerThickness)
                                     Rectangle()
                                         .fill(Color.nepBlue)
-                                        .frame(width: 4, height: 25)
+                                        .frame(width: cornerThickness, height: cornerSize)
                                 }
                                 .rotationEffect(.degrees(Double(index) * 90))
                                 .offset(
-                                    x: index % 2 == 0 ? 0 : frameWidth/2 - 12.5,
-                                    y: index < 2 ? 0 : frameHeight/2 - 12.5
+                                    x: index % 2 == 0 ? -(frameWidth/2 - cornerSize/2) : (frameWidth/2 - cornerSize/2),
+                                    y: index < 2 ? -(frameHeight/2 - cornerSize/2) : (frameHeight/2 - cornerSize/2)
                                 )
                             }
-                            
-                            // Center alignment guides
-                            VStack(spacing: 0) {
-                                Rectangle()
-                                    .fill(Color.nepBlue.opacity(0.3))
-                                    .frame(width: frameWidth - 40, height: 2)
-                                Spacer()
-                                Rectangle()
-                                    .fill(Color.nepBlue.opacity(0.3))
-                                    .frame(width: frameWidth - 40, height: 2)
-                            }
-                            .frame(height: frameHeight)
-                            
-                            HStack(spacing: 0) {
-                                Rectangle()
-                                    .fill(Color.nepBlue.opacity(0.3))
-                                    .frame(width: 2, height: frameHeight - 40)
-                                Spacer()
-                                Rectangle()
-                                    .fill(Color.nepBlue.opacity(0.3))
-                                    .frame(width: 2, height: frameHeight - 40)
-                            }
-                            .frame(width: frameWidth)
                         }
+                        .frame(width: frameWidth, height: frameHeight)
                         .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
                     }
-                    .frame(height: 280)
+                    .frame(height: 200)
                     
                     // INE-specific instructions
                     VStack(spacing: 8) {
@@ -171,41 +149,21 @@ struct CameraCaptureView: View {
                             .foregroundColor(.white)
                             .multilineTextAlignment(.center)
                         
-                        if currentSide == .front {
-                            Text("Incluye: Nombre, CURP, fecha de nacimiento")
-                                .font(.system(size: 14, weight: .regular))
-                                .foregroundColor(.white.opacity(0.8))
-                                .multilineTextAlignment(.center)
-                        } else {
-                            Text("Incluye: Dirección completa y sección electoral")
-                                .font(.system(size: 14, weight: .regular))
-                                .foregroundColor(.white.opacity(0.8))
-                                .multilineTextAlignment(.center)
-                        }
+                        Text("Incluye: Nombre, CURP, fecha de nacimiento")
+                            .font(.system(size: 14, weight: .regular))
+                            .foregroundColor(.white.opacity(0.8))
+                            .multilineTextAlignment(.center)
                     }
+                    .padding(.horizontal, 20)
                 }
-                .padding(.horizontal, 20)
                 
                 Spacer()
                 
-                // Capture controls
-                HStack(spacing: 40) {
-                    // Retake button (if image exists)
-                    if capturedImages[currentSide] != nil {
-                        Button(action: {
-                            capturedImages[currentSide] = nil
-                        }) {
-                            Image(systemName: "arrow.clockwise")
-                                .font(.system(size: 24, weight: .semibold))
-                                .foregroundColor(.white)
-                                .frame(width: 60, height: 60)
-                                .background(Color.black.opacity(0.5))
-                                .cornerRadius(30)
-                        }
-                    }
-                    
-                    // Capture button
+                // Capture controls - moved down
+                VStack(spacing: 20) {
+                    // Main capture button
                     Button(action: {
+                        print("DEBUG: User tapped capture button")
                         capturePhoto()
                     }) {
                         ZStack {
@@ -216,67 +174,73 @@ struct CameraCaptureView: View {
                             Circle()
                                 .stroke(Color.nepBlue, lineWidth: 4)
                                 .frame(width: 80, height: 80)
+                            
+                            Circle()
+                                .fill(Color.nepBlue)
+                                .frame(width: 60, height: 60)
                         }
                     }
+                    .scaleEffect(capturedImage != nil ? 0.9 : 1.0)
+                    .animation(.easeInOut(duration: 0.2), value: capturedImage != nil)
                     
-                    // Next/Continue button
-                    if capturedImages[currentSide] != nil {
-                        Button(action: {
-                            if currentSide == .front {
-                                currentSide = .back
-                            } else {
-                                processImages()
+                    // Action buttons
+                    HStack(spacing: 40) {
+                        // Retake button (if image exists)
+                        if capturedImage != nil {
+                            Button(action: {
+                                print("DEBUG: User tapped retake button")
+                                capturedImage = nil
+                            }) {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(width: 50, height: 50)
+                                    .background(Color.black.opacity(0.6))
+                                    .cornerRadius(25)
                             }
-                        }) {
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 24, weight: .semibold))
-                                .foregroundColor(.white)
-                                .frame(width: 60, height: 60)
-                                .background(Color.nepBlue)
-                                .cornerRadius(30)
+                        } else {
+                            Color.clear.frame(width: 50, height: 50)
                         }
-                    } else {
-                        // Placeholder for symmetry
-                        Color.clear
-                            .frame(width: 60, height: 60)
+                        
+                        // Continue button
+                        if capturedImage != nil {
+                            Button(action: {
+                                print("DEBUG: User tapped continue button")
+                                processImage()
+                            }) {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(width: 50, height: 50)
+                                    .background(Color.nepBlue)
+                                    .cornerRadius(25)
+                            }
+                        } else {
+                            Color.clear.frame(width: 50, height: 50)
+                        }
                     }
                 }
                 .padding(.horizontal, 40)
-                .padding(.bottom, 50)
+                .padding(.bottom, 120)
             }
         }
         .onAppear {
+            print("DEBUG: CameraCaptureView appeared")
             // Start camera session with a slight delay to ensure view is ready
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                print("DEBUG: Starting camera session")
                 cameraManager.startSession()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .AVCaptureSessionDidStartRunning)) { _ in
-            print("Camera session did start running")
+            print("DEBUG: Camera session did start running")
         }
         .onReceive(NotificationCenter.default.publisher(for: .AVCaptureSessionDidStopRunning)) { _ in
-            print("Camera session did stop running")
+            print("DEBUG: Camera session did stop running")
         }
         .onDisappear {
+            print("DEBUG: CameraCaptureView disappeared")
             cameraManager.stopSession()
-        }
-        .fullScreenCover(isPresented: $showImagePreview) {
-            ImagePreviewView(
-                image: capturedImages[currentSide] ?? UIImage(),
-                side: currentSide,
-                onRetake: {
-                    capturedImages[currentSide] = nil
-                    showImagePreview = false
-                },
-                onContinue: {
-                    showImagePreview = false
-                    if currentSide == .front {
-                        currentSide = .back
-                    } else {
-                        processImages()
-                    }
-                }
-            )
         }
         .fullScreenCover(isPresented: $showOCRResults) {
             if let results = ocrResults {
@@ -300,25 +264,42 @@ struct CameraCaptureView: View {
     }
     
     private func capturePhoto() {
+        print("DEBUG: Attempting to capture photo")
+        
         cameraManager.capturePhoto { image in
-            if let image = image {
-                capturedImages[currentSide] = image
-                showImagePreview = true
+            DispatchQueue.main.async {
+                if let image = image {
+                    print("DEBUG: Photo captured successfully")
+                    self.capturedImage = image
+                    // Skip preview, go straight to processing
+                    self.processImage()
+                } else {
+                    print("DEBUG: Failed to capture photo")
+                    // You could show an error alert here
+                }
             }
         }
     }
     
-    private func processImages() {
+    private func processImage() {
+        print("DEBUG: Starting image processing")
         showProcessing = true
         
-        // Process both images with OCR
+        // Process single image with OCR
         Task {
-            let frontImage = capturedImages[.front]
-            let backImage = capturedImages[.back]
+            guard let image = capturedImage else {
+                print("DEBUG: No image to process")
+                await MainActor.run {
+                    showProcessing = false
+                }
+                return
+            }
             
-            let results = await processOCR(frontImage: frontImage, backImage: backImage)
+            print("DEBUG: Processing image with OCR")
+            let results = await processOCR(image: image)
             
             await MainActor.run {
+                print("DEBUG: OCR processing completed")
                 showProcessing = false
                 ocrResults = results
                 showOCRResults = true
@@ -326,53 +307,19 @@ struct CameraCaptureView: View {
         }
     }
     
-    private func processOCR(frontImage: UIImage?, backImage: UIImage?) async -> OCRResults {
+    private func processOCR(image: UIImage) async -> OCRResults {
+        print("DEBUG: Starting OCR processing")
         let ocrService = OCRService.shared
         
-        var frontResults = OCRResults.empty
-        var backResults = OCRResults.empty
+        // Process single image as front side
+        let results = await ocrService.processDocument(image, side: .front)
         
-        if let frontImage = frontImage {
-            frontResults = await ocrService.processDocument(frontImage, side: .front)
-        }
+        print("DEBUG: OCR results - Name: \(results.firstName) \(results.lastName), CURP: \(results.curp)")
         
-        if let backImage = backImage {
-            backResults = await ocrService.processDocument(backImage, side: .back)
-        }
-        
-        // Combine results from both sides with INE-specific fields
-        return OCRResults(
-            firstName: frontResults.firstName,
-            lastName: frontResults.lastName,
-            middleName: frontResults.middleName,
-            dateOfBirth: frontResults.dateOfBirth,
-            documentNumber: frontResults.documentNumber,
-            nationality: frontResults.nationality,
-            address: backResults.address.isEmpty ? frontResults.address : backResults.address,
-            occupation: "",
-            incomeSource: "",
-            curp: frontResults.curp,
-            sex: frontResults.sex,
-            electoralSection: frontResults.electoralSection,
-            locality: frontResults.locality,
-            municipality: frontResults.municipality,
-            state: frontResults.state,
-            expirationDate: frontResults.expirationDate,
-            issueDate: frontResults.issueDate
-        )
+        return results
     }
 }
 
-enum IDSide: CaseIterable {
-    case front, back
-    
-    var displayName: String {
-        switch self {
-        case .front: return "Frente"
-        case .back: return "Reverso"
-        }
-    }
-}
 
 struct CameraPreviewView: UIViewRepresentable {
     let cameraManager: CameraManager

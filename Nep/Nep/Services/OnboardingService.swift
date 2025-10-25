@@ -264,7 +264,7 @@ class OnboardingLogger {
 enum OnboardingEvent {
     case consentGiven
     case cameraPermissionGranted
-    case documentCaptured(side: IDSide)
+    case documentCaptured
     case ocrCompleted(success: Bool)
     case voiceConversationStarted
     case voiceConversationCompleted
@@ -279,8 +279,8 @@ enum OnboardingEvent {
             return "User gave consent for camera and data processing"
         case .cameraPermissionGranted:
             return "Camera permission granted"
-        case .documentCaptured(let side):
-            return "Document captured: \(side.displayName)"
+        case .documentCaptured:
+            return "Document captured: Front"
         case .ocrCompleted(let success):
             return "OCR completed: \(success ? "success" : "failed")"
         case .voiceConversationStarted:

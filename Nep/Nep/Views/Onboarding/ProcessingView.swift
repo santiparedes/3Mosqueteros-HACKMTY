@@ -115,7 +115,6 @@ struct ProcessingView: View {
 
 struct ImagePreviewView: View {
     let image: UIImage
-    let side: IDSide
     let onRetake: () -> Void
     let onContinue: () -> Void
     
@@ -126,7 +125,7 @@ struct ImagePreviewView: View {
             VStack(spacing: 30) {
                 // Header
                 HStack {
-                    Text("Vista previa - \(side.displayName)")
+                    Text("Vista previa - Frente")
                         .font(.system(size: 20, weight: .bold))
                         .foregroundColor(.white)
                     

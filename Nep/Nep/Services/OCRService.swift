@@ -2,6 +2,10 @@ import Vision
 import UIKit
 import Foundation
 
+enum IDSide {
+    case front, back
+}
+
 struct OCRResults {
     let firstName: String
     let lastName: String
@@ -38,21 +42,25 @@ class OCRService: ObservableObject {
     private init() {}
     
     func processDocument(_ image: UIImage, side: IDSide) async -> OCRResults {
+        print("DEBUG: OCRService - Starting document processing")
         return await withCheckedContinuation { continuation in
             guard let cgImage = image.cgImage else {
+                print("DEBUG: OCRService - No CGImage available")
                 continuation.resume(returning: OCRResults.empty)
                 return
             }
             
             let request = VNRecognizeTextRequest { request, error in
                 if let error = error {
-                    print("OCR Error: \(error.localizedDescription)")
+                    print("DEBUG: OCRService - Error: \(error.localizedDescription)")
                     continuation.resume(returning: OCRResults.empty)
                     return
                 }
                 
                 let results = self.extractTextFromObservations(request.results as? [VNRecognizedTextObservation] ?? [])
+                print("DEBUG: OCRService - Extracted text: \(results.prefix(200))...")
                 let ocrResults = self.parseDocumentData(results, side: side)
+                print("DEBUG: OCRService - Parsed results - Name: \(ocrResults.firstName) \(ocrResults.lastName), CURP: \(ocrResults.curp)")
                 continuation.resume(returning: ocrResults)
             }
             
@@ -66,7 +74,7 @@ class OCRService: ObservableObject {
             do {
                 try handler.perform([request])
             } catch {
-                print("Failed to perform OCR: \(error.localizedDescription)")
+                print("DEBUG: OCRService - Failed to perform OCR: \(error.localizedDescription)")
                 continuation.resume(returning: OCRResults.empty)
             }
         }
