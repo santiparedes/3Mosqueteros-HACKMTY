@@ -15,33 +15,40 @@ struct MainView: View {
                         }
                         .tag(0)
                     
+                    QuantumBankingView()
+                        .tabItem {
+                            Image(systemName: "shield.lefthalf.filled")
+                            Text("Quantum")
+                        }
+                        .tag(1)
+                    
                     CardDetailsView()
                         .tabItem {
                             Image(systemName: "asterisk")
                             Text("Card")
                         }
-                        .tag(1)
+                        .tag(2)
                     
                     AddView()
                         .tabItem {
                             Image(systemName: "plus")
                             Text("Add")
                         }
-                        .tag(2)
+                        .tag(3)
                     
                     MenuView()
                         .tabItem {
                             Image(systemName: "ellipsis")
                             Text("Menu")
                         }
-                        .tag(3)
+                        .tag(4)
                     
                     ProfileView()
                         .tabItem {
                             Image(systemName: "person")
                             Text("Profile")
                         }
-                        .tag(4)
+                        .tag(5)
                 }
                 .accentColor(.nepBlue)
             } else {

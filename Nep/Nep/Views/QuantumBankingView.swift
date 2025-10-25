@@ -173,7 +173,7 @@ struct QuantumBankingView: View {
                     
                     LazyVStack(spacing: 8) {
                         ForEach(bridge.nessieAccounts) { account in
-                            AccountCard(
+                            NessieAccountCard(
                                 account: account,
                                 isSelected: selectedAccount?.id == account.id
                             ) {
@@ -438,7 +438,7 @@ struct CustomerCard: View {
     }
 }
 
-struct AccountCard: View {
+struct NessieAccountCard: View {
     let account: NessieAccount
     let isSelected: Bool
     let onTap: () -> Void
