@@ -2,6 +2,12 @@ import SwiftUI
 
 struct WelcomeView: View {
     @State private var isAnimating = false
+    @State private var showNEP = false
+    @State private var showLogo = false
+    @State private var showContent = false
+    @State private var showButtons = false
+    @State private var navigateToMain = false
+    @Binding var isLoggedIn: Bool
     
     var body: some View {
         ZStack {
@@ -12,73 +18,136 @@ struct WelcomeView: View {
             VStack(spacing: 40) {
                 Spacer()
                 
-                // Logo
+                // Logo and NEP text
                 VStack(spacing: 20) {
-                    //  logo
-                    ZStack {
-                        Circle()
-                            .fill(Color.nepBlue)
-                            .frame(width: 120, height: 120)
-                        
-                        Image("Star")
-                            .resizable(resizingMode: .stretch)
-                            .aspectRatio(contentMode: .fill)
-                            .font(.system(size: 60, weight: .bold))
+                    // NEP Text with custom font
+                    if showNEP {
+                        Text("NEP")
+                            .font(.custom("BrunoACESC-regular", size: 48))
+                            .fontWeight(.bold)
                             .foregroundColor(.white)
-                            .frame(width: 90, height: 90)
-                            .colorInvert()
-                        
+                            .transition(.asymmetric(
+                                insertion: .scale(scale: 0.5).combined(with: .opacity),
+                                removal: .scale(scale: 0.5).combined(with: .opacity)
+                            ))
                     }
-                    .scaleEffect(isAnimating ? 1.1 : 1.0)
-                    .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isAnimating)
                     
-                    // Main text
-                    VStack(spacing: 16) {
-                        Text("TOMORROW'S BANKING IS HERE")
-                            .font(.system(size: 28, weight: .bold))
-                            .multilineTextAlignment(.center)
-                            .foregroundColor(.white)
-                        
-                        Text("Experience banking reimagined for the digital age — secure, intuitive, and built for the way you live today.")
-                            .font(.system(size: 16, weight: .medium))
-                            .multilineTextAlignment(.center)
-                            .foregroundColor(.white .opacity(0.5))
-                            .padding(.horizontal, 20)
+                    // Star logo
+                    if showLogo {
+                        ZStack {
+                            Circle()
+                                .fill(Color.nepBlue)
+                                .frame(width: 120, height: 120)
+                            
+                            Image("Star")
+                                .resizable(resizingMode: .stretch)
+                                .aspectRatio(contentMode: .fill)
+                                .font(.system(size: 60, weight: .bold))
+                                .foregroundColor(.white)
+                                .frame(width: 90, height: 90)
+                                .colorInvert()
+                        }
+                        .scaleEffect(isAnimating ? 1.1 : 1.0)
+                        .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: isAnimating)
+                        .transition(.asymmetric(
+                            insertion: .scale(scale: 0.5).combined(with: .opacity),
+                            removal: .scale(scale: 0.5).combined(with: .opacity)
+                        ))
+                    }
+                    
+                    // Main content
+                    if showContent {
+                        VStack(spacing: 16) {
+                            Text("TOMORROW'S BANKING IS HERE")
+                                .font(.system(size: 28, weight: .bold))
+                                .multilineTextAlignment(.center)
+                                .foregroundColor(.white)
+                            
+                        }
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .bottom).combined(with: .opacity),
+                            removal: .move(edge: .bottom).combined(with: .opacity)
+                        ))
                     }
                 }
                 
                 Spacer()
                 
                 // Action buttons
-                VStack(spacing: 16) {
-                    Button(action: {
-                        // Navigate to registration
-                    }) {
-                        Text("Become a Customer")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.nepTextPrimary)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 56)
-                            .background(Color.white)
-                            .cornerRadius(28)
-                            .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+                if showButtons {
+                    VStack(spacing: 16) {
+                        Button(action: {
+                            // Navigate to registration
+                            withAnimation(.easeInOut(duration: 0.5)) {
+                                isLoggedIn = true
+                            }
+                        }) {
+                            Text("Become a Customer")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(.nepTextPrimary)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 56)
+                                .background(Color.white)
+                                .cornerRadius(28)
+                                .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+                        }
+                        
+                        Button(action: {
+                            // Navigate to login
+                            withAnimation(.easeInOut(duration: 0.5)) {
+                                isLoggedIn = true
+                            }
+                        }) {
+                            Text("I Am Already a Customer")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(.white.opacity(0.8))
+                                .bold()
+                        }
                     }
-                    
-                    Button(action: {
-                        // Navigate to login
-                    }) {
-                        Text("I Am Already a Customer")
-                            .font(.system(size: 20, weight: .medium))
-                            .foregroundColor(.white .opacity(0.5))
-                            .bold()
-                    }
+                    .padding(.horizontal, 32)
+                    .padding(.bottom, 50)
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .bottom).combined(with: .opacity),
+                        removal: .move(edge: .bottom).combined(with: .opacity)
+                    ))
                 }
-                .padding(.horizontal, 32)
-                .padding(.bottom, 50)
             }
         }
         .onAppear {
+            startAnimationSequence()
+        }
+    }
+    
+    private func startAnimationSequence() {
+        // Show NEP text first
+        withAnimation(.easeInOut(duration: 0.5)) {
+            showNEP = true
+        }
+        
+        // Show logo after NEP
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            withAnimation(.easeInOut(duration: 0.6)) {
+                showLogo = true
+            }
+        }
+        
+        // Start pulsing animation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
             isAnimating = true
+        }
+        
+        // Show content
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
+            withAnimation(.easeInOut(duration: 0.8)) {
+                showContent = true
+            }
+        }
+        
+        // Show buttons last
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) {
+            withAnimation(.easeInOut(duration: 0.8)) {
+                showButtons = true
+            }
         }
     }
 }
@@ -109,6 +178,6 @@ struct GridPattern: View {
 }
 
 #Preview {
-    WelcomeView()
+    WelcomeView(isLoggedIn: .constant(false))
         .preferredColorScheme(.dark)
 }
