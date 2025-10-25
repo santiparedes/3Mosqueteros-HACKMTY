@@ -33,6 +33,8 @@ class TapToSendService: NSObject, ObservableObject {
     
     // Payment data
     @Published var pendingPayment: PendingPayment?
+    @Published var paymentSent = false
+    @Published var paymentResponse: PaymentResponse?
     
     // Permission monitoring
     private var bluetoothManager: CBCentralManager?
@@ -576,6 +578,8 @@ class TapToSendService: NSObject, ObservableObject {
         pendingPayment = nil
         receivedPaymentRequest = nil
         showPaymentRequest = false
+        paymentSent = false
+        paymentResponse = nil
         
         addDebugMessage("✅ Disconnected from all peers")
     }
@@ -757,14 +761,20 @@ extension TapToSendService: MCSessionDelegate {
     }
     
     private func handlePaymentResponse(_ response: PaymentResponse, from peer: MCPeerID) {
-        if response.accepted {
-            addDebugMessage("✅ Payment accepted by \(peer.displayName)")
-            // Handle successful payment
-            if let transactionId = response.transactionId {
-                addDebugMessage("📄 Transaction ID: \(transactionId)")
+        DispatchQueue.main.async {
+            self.paymentResponse = response
+            
+            if response.accepted {
+                self.addDebugMessage("✅ Payment accepted by \(peer.displayName)")
+                self.paymentSent = true
+                // Handle successful payment
+                if let transactionId = response.transactionId {
+                    self.addDebugMessage("📄 Transaction ID: \(transactionId)")
+                }
+            } else {
+                self.addDebugMessage("❌ Payment rejected by \(peer.displayName)")
+                self.paymentSent = false
             }
-        } else {
-            addDebugMessage("❌ Payment rejected by \(peer.displayName)")
         }
     }
     
