@@ -14,6 +14,7 @@ import uvicorn
 # Import Nessie integration
 from routes.nessie_integration import router as nessie_router
 from routes.pqc_service import router as pqc_router
+from routes.ine_processing import router as ine_router
 
 # Database setup
 SQLALCHEMY_DATABASE_URL = "sqlite:///./quantum_wallet.db"
@@ -131,6 +132,7 @@ app.add_middleware(
 # Include routers
 app.include_router(nessie_router)
 app.include_router(pqc_router)
+app.include_router(ine_router)
 
 # Dependency to get DB session
 def get_db():

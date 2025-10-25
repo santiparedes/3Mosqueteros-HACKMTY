@@ -4,7 +4,7 @@ import CryptoKit
 class OnboardingService: ObservableObject {
     static let shared = OnboardingService()
     
-    private let baseURL = "https://your-backend-api.com/api" // Replace with actual API
+    private let baseURL = "http://localhost:8000" // Local backend for development
     private let apiKey = "YOUR_API_KEY" // Replace with actual API key
     
     private init() {}
@@ -60,7 +60,7 @@ class OnboardingService: ObservableObject {
     }
     
     private func sendToBackend(_ encryptedData: EncryptedOnboardingData) async throws -> OnboardingResponse {
-        guard let url = URL(string: "\(baseURL)/onboarding") else {
+        guard let url = URL(string: "\(baseURL)/ine/onboarding") else {
             throw OnboardingError.invalidURL
         }
         
@@ -96,7 +96,7 @@ class OnboardingService: ObservableObject {
     
     // MARK: - Verify Document
     func verifyDocument(_ documentNumber: String) async throws -> DocumentVerificationResponse {
-        guard let url = URL(string: "\(baseURL)/verify-document/\(documentNumber)") else {
+        guard let url = URL(string: "\(baseURL)/ine/verify-document/\(documentNumber)") else {
             throw OnboardingError.invalidURL
         }
         
@@ -116,7 +116,7 @@ class OnboardingService: ObservableObject {
     
     // MARK: - Get Onboarding Status
     func getOnboardingStatus(userId: String) async throws -> OnboardingStatus {
-        guard let url = URL(string: "\(baseURL)/onboarding/status/\(userId)") else {
+        guard let url = URL(string: "\(baseURL)/ine/status/\(userId)") else {
             throw OnboardingError.invalidURL
         }
         

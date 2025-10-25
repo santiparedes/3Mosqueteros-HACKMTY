@@ -26,7 +26,7 @@
 				<key>NSIncludesSubdomains</key>
 				<true/>
 				<key>NSCameraUsageDescription</key>
-				<string></string>
+				<string>We need camera access to capture your INE identification document for verification during onboarding.</string>
 			</dict>
 		</dict>
 	</dict>
@@ -65,5 +65,9 @@
 	<string>This app uses Bluetooth for tap-to-send money transfers between nearby devices.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
 	<string>This app uses Bluetooth for tap-to-send money transfers between nearby devices.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>We need microphone access for voice guidance and to process your responses during onboarding.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>We use speech recognition to understand your voice commands and responses during onboarding.</string>
 </dict>
 </plist>

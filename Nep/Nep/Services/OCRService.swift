@@ -13,8 +13,22 @@ struct OCRResults {
     let occupation: String
     let incomeSource: String
     
+    // INE-specific fields
+    let curp: String
+    let sex: String
+    let electoralSection: String
+    let locality: String
+    let municipality: String
+    let state: String
+    let expirationDate: String
+    let issueDate: String
+    
     var fullName: String {
         [firstName, middleName, lastName].filter { !$0.isEmpty }.joined(separator: " ")
+    }
+    
+    var isINEValid: Bool {
+        return !documentNumber.isEmpty && !curp.isEmpty && !firstName.isEmpty && !lastName.isEmpty
     }
 }
 
@@ -83,27 +97,79 @@ class OCRService: ObservableObject {
         var documentNumber = ""
         var nationality = ""
         var address = ""
+        var curp = ""
+        var sex = ""
+        var electoralSection = ""
+        var locality = ""
+        var municipality = ""
+        var state = ""
+        var expirationDate = ""
+        var issueDate = ""
         
-        // Extract document number (usually contains letters and numbers)
-        if let docMatch = text.range(of: #"[A-Z]{2,3}[0-9]{6,10}"#, options: .regularExpression) {
+        // INE-specific extraction patterns
+        // Extract CURP (18-character alphanumeric code)
+        if let curpMatch = text.range(of: #"[A-Z]{4}[0-9]{6}[HM][A-Z]{5}[0-9A-Z][0-9]"#, options: .regularExpression) {
+            curp = String(text[curpMatch])
+        }
+        
+        // Extract document number (INE format: usually 13 digits)
+        if let docMatch = text.range(of: #"[0-9]{13}"#, options: .regularExpression) {
             documentNumber = String(text[docMatch])
         }
         
-        // Extract date of birth (DD/MM/YYYY or DD-MM-YYYY format)
-        if let dobMatch = text.range(of: #"[0-9]{2}[/-][0-9]{2}[/-][0-9]{4}"#, options: .regularExpression) {
-            dateOfBirth = String(text[dobMatch])
+        // Extract dates (DD/MM/YYYY format)
+        let datePattern = #"[0-9]{2}[/-][0-9]{2}[/-][0-9]{4}"#
+        let dateMatches = text.ranges(of: datePattern, options: .regularExpression)
+        
+        if dateMatches.count >= 1 {
+            dateOfBirth = String(text[dateMatches[0]])
+        }
+        if dateMatches.count >= 2 {
+            issueDate = String(text[dateMatches[1]])
+        }
+        if dateMatches.count >= 3 {
+            expirationDate = String(text[dateMatches[2]])
         }
         
-        // Extract nationality
-        let nationalityKeywords = ["MEXICANA", "MEXICANO", "MEX", "MEXICO"]
-        for keyword in nationalityKeywords {
-            if text.contains(keyword) {
-                nationality = "Mexicana"
-                break
+        // Extract sex (H/M or HOMBRE/MUJER)
+        if text.contains("HOMBRE") || text.contains("H ") {
+            sex = "H"
+        } else if text.contains("MUJER") || text.contains("M ") {
+            sex = "M"
+        }
+        
+        // Extract electoral section
+        if let sectionMatch = text.range(of: #"SECCIÓN[:\s]*[0-9]+"#, options: .regularExpression) {
+            let sectionText = String(text[sectionMatch])
+            if let numberMatch = sectionText.range(of: #"[0-9]+"#, options: .regularExpression) {
+                electoralSection = String(sectionText[numberMatch])
             }
         }
         
-        // Extract names (look for common name patterns)
+        // Extract location information
+        let locationKeywords = ["LOCALIDAD", "MUNICIPIO", "ESTADO"]
+        for (index, line) in lines.enumerated() {
+            let cleanLine = line.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+            
+            if cleanLine.contains("LOCALIDAD") {
+                // Get the next line as locality
+                if index + 1 < lines.count {
+                    locality = lines[index + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+            } else if cleanLine.contains("MUNICIPIO") {
+                // Get the next line as municipality
+                if index + 1 < lines.count {
+                    municipality = lines[index + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+            } else if cleanLine.contains("ESTADO") {
+                // Get the next line as state
+                if index + 1 < lines.count {
+                    state = lines[index + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+            }
+        }
+        
+        // Extract names using INE-specific patterns
         for line in lines {
             let cleanLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
             
@@ -117,7 +183,7 @@ class OCRService: ObservableObject {
                 continue
             }
             
-            // Look for name patterns
+            // Look for INE name patterns
             if cleanLine.contains("NOMBRE") || cleanLine.contains("APELLIDO") {
                 let nameComponents = cleanLine.components(separatedBy: .whitespaces)
                     .filter { $0.count > 2 && !$0.contains("NOMBRE") && !$0.contains("APELLIDO") }
@@ -146,6 +212,9 @@ class OCRService: ObservableObject {
             }
         }
         
+        // Set nationality for INE (Mexican)
+        nationality = "Mexicana"
+        
         return OCRResults(
             firstName: firstName,
             lastName: lastName,
@@ -155,24 +224,32 @@ class OCRService: ObservableObject {
             nationality: nationality,
             address: address,
             occupation: "",
-            incomeSource: ""
+            incomeSource: "",
+            curp: curp,
+            sex: sex,
+            electoralSection: electoralSection,
+            locality: locality,
+            municipality: municipality,
+            state: state,
+            expirationDate: expirationDate,
+            issueDate: issueDate
         )
     }
     
     private func parseBackSide(text: String, lines: [String]) -> OCRResults {
         var address = ""
         
-        // Look for address patterns
-        let addressKeywords = ["DOMICILIO", "DIRECCION", "CALLE", "COLONIA", "CP", "C.P."]
+        // Look for address patterns on INE back side
+        let addressKeywords = ["DOMICILIO", "DIRECCION", "CALLE", "COLONIA", "CP", "C.P.", "CÓDIGO POSTAL"]
         for (index, line) in lines.enumerated() {
             let cleanLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
             
             for keyword in addressKeywords {
                 if cleanLine.contains(keyword) {
                     // Try to get the next few lines as address
-                    let addressLines = lines.suffix(from: index).prefix(3)
+                    let addressLines = lines.suffix(from: index).prefix(4)
                         .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                        .filter { !$0.isEmpty }
+                        .filter { !$0.isEmpty && !$0.contains(keyword) }
                     
                     address = addressLines.joined(separator: " ")
                     break
@@ -191,7 +268,15 @@ class OCRService: ObservableObject {
             nationality: "",
             address: address,
             occupation: "",
-            incomeSource: ""
+            incomeSource: "",
+            curp: "",
+            sex: "",
+            electoralSection: "",
+            locality: "",
+            municipality: "",
+            state: "",
+            expirationDate: "",
+            issueDate: ""
         )
     }
 }
@@ -206,6 +291,29 @@ extension OCRResults {
         nationality: "",
         address: "",
         occupation: "",
-        incomeSource: ""
+        incomeSource: "",
+        curp: "",
+        sex: "",
+        electoralSection: "",
+        locality: "",
+        municipality: "",
+        state: "",
+        expirationDate: "",
+        issueDate: ""
     )
+}
+
+extension String {
+    func ranges(of pattern: String, options: String.CompareOptions = []) -> [Range<String.Index>] {
+        var ranges: [Range<String.Index>] = []
+        var searchStartIndex = self.startIndex
+        
+        while searchStartIndex < self.endIndex,
+              let range = self.range(of: pattern, options: options, range: searchStartIndex..<self.endIndex) {
+            ranges.append(range)
+            searchStartIndex = range.upperBound
+        }
+        
+        return ranges
+    }
 }

@@ -89,39 +89,102 @@ struct CameraCaptureView: View {
                 
                 Spacer()
                 
-                // Document frame guide
+                // INE Document frame guide
                 VStack(spacing: 20) {
-                    Text("Coloca tu identificación dentro del marco")
-                        .font(.system(size: 16, weight: .medium))
+                    Text("Coloca tu INE dentro del marco")
+                        .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
                     
-                    // Document frame
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.nepBlue, lineWidth: 3)
-                            .frame(width: 280, height: 180)
-                            .background(Color.clear)
+                    // INE-specific document frame with proper aspect ratio
+                    GeometryReader { geometry in
+                        let frameWidth = min(geometry.size.width * 0.85, 320) // Max 320pt width
+                        let frameHeight = frameWidth * (85.6 / 53.98) // INE aspect ratio (85.6mm x 53.98mm)
                         
-                        // Corner guides
-                        ForEach(0..<4) { index in
-                            Rectangle()
-                                .fill(Color.nepBlue)
-                                .frame(width: 20, height: 3)
+                        ZStack {
+                            // Dark overlay outside the frame
+                            Color.black.opacity(0.6)
+                                .mask(
+                                    Rectangle()
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .frame(width: frameWidth, height: frameHeight)
+                                                .blendMode(.destinationOut)
+                                        )
+                                )
+                                .allowsHitTesting(false)
+                            
+                            // INE document frame
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.nepBlue, lineWidth: 4)
+                                .frame(width: frameWidth, height: frameHeight)
+                                .background(Color.clear)
+                            
+                            // Enhanced corner guides for INE
+                            ForEach(0..<4) { index in
+                                VStack(spacing: 0) {
+                                    Rectangle()
+                                        .fill(Color.nepBlue)
+                                        .frame(width: 25, height: 4)
+                                    Rectangle()
+                                        .fill(Color.nepBlue)
+                                        .frame(width: 4, height: 25)
+                                }
                                 .rotationEffect(.degrees(Double(index) * 90))
                                 .offset(
-                                    x: index % 2 == 0 ? 0 : 130,
-                                    y: index < 2 ? 0 : 130
+                                    x: index % 2 == 0 ? 0 : frameWidth/2 - 12.5,
+                                    y: index < 2 ? 0 : frameHeight/2 - 12.5
                                 )
+                            }
+                            
+                            // Center alignment guides
+                            VStack(spacing: 0) {
+                                Rectangle()
+                                    .fill(Color.nepBlue.opacity(0.3))
+                                    .frame(width: frameWidth - 40, height: 2)
+                                Spacer()
+                                Rectangle()
+                                    .fill(Color.nepBlue.opacity(0.3))
+                                    .frame(width: frameWidth - 40, height: 2)
+                            }
+                            .frame(height: frameHeight)
+                            
+                            HStack(spacing: 0) {
+                                Rectangle()
+                                    .fill(Color.nepBlue.opacity(0.3))
+                                    .frame(width: 2, height: frameHeight - 40)
+                                Spacer()
+                                Rectangle()
+                                    .fill(Color.nepBlue.opacity(0.3))
+                                    .frame(width: 2, height: frameHeight - 40)
+                            }
+                            .frame(width: frameWidth)
+                        }
+                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                    }
+                    .frame(height: 280)
+                    
+                    // INE-specific instructions
+                    VStack(spacing: 8) {
+                        Text("Asegúrate de que toda la información sea legible")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white)
+                            .multilineTextAlignment(.center)
+                        
+                        if currentSide == .front {
+                            Text("Incluye: Nombre, CURP, fecha de nacimiento")
+                                .font(.system(size: 14, weight: .regular))
+                                .foregroundColor(.white.opacity(0.8))
+                                .multilineTextAlignment(.center)
+                        } else {
+                            Text("Incluye: Dirección completa y sección electoral")
+                                .font(.system(size: 14, weight: .regular))
+                                .foregroundColor(.white.opacity(0.8))
+                                .multilineTextAlignment(.center)
                         }
                     }
-                    
-                    Text("Asegúrate de que toda la información sea legible")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.white.opacity(0.8))
-                        .multilineTextAlignment(.center)
                 }
-                .padding(.horizontal, 40)
+                .padding(.horizontal, 20)
                 
                 Spacer()
                 
@@ -277,7 +340,7 @@ struct CameraCaptureView: View {
             backResults = await ocrService.processDocument(backImage, side: .back)
         }
         
-        // Combine results from both sides
+        // Combine results from both sides with INE-specific fields
         return OCRResults(
             firstName: frontResults.firstName,
             lastName: frontResults.lastName,
@@ -287,7 +350,15 @@ struct CameraCaptureView: View {
             nationality: frontResults.nationality,
             address: backResults.address.isEmpty ? frontResults.address : backResults.address,
             occupation: "",
-            incomeSource: ""
+            incomeSource: "",
+            curp: frontResults.curp,
+            sex: frontResults.sex,
+            electoralSection: frontResults.electoralSection,
+            locality: frontResults.locality,
+            municipality: frontResults.municipality,
+            state: frontResults.state,
+            expirationDate: frontResults.expirationDate,
+            issueDate: frontResults.issueDate
         )
     }
 }

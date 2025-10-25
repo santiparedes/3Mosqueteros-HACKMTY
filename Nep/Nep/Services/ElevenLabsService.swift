@@ -9,6 +9,7 @@ class ElevenLabsService: NSObject, ObservableObject {
     @Published var isListening = false
     @Published var currentMessage = ""
     @Published var conversationHistory: [ConversationMessage] = []
+    @Published var isGeminiProcessing = false
     
     private let apiKey = "YOUR_ELEVENLABS_API_KEY" // Replace with actual API key
     private let baseURL = "https://api.elevenlabs.io/v1"
@@ -17,6 +18,11 @@ class ElevenLabsService: NSObject, ObservableObject {
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private let audioEngine = AVAudioEngine()
+    
+    // Gemini AI integration
+    private let geminiService = GeminiAIService.shared
+    private var currentOnboardingStep: OnboardingStep = .welcome
+    private var currentOCRResults: OCRResults = OCRResults.empty
     
     private override init() {
         super.init()
@@ -171,23 +177,83 @@ class ElevenLabsService: NSObject, ObservableObject {
         }
     }
     
-    // MARK: - Conversation Management
+    // MARK: - Gemini-Powered Conversation Management
     func startOnboardingConversation(ocrResults: OCRResults) async {
-        let welcomeMessage = """
-        ¡Hola! Soy tu asistente virtual de NEP. He detectado algunos datos de tu identificación:
+        currentOCRResults = ocrResults
+        currentOnboardingStep = .welcome
         
-        Nombre: \(ocrResults.fullName)
-        Fecha de nacimiento: \(ocrResults.dateOfBirth)
-        Número de documento: \(ocrResults.documentNumber)
-        
-        ¿Podrías confirmarme tu nombre completo por favor?
-        """
+        // Use Gemini to generate personalized welcome message
+        let welcomeMessage = await geminiService.generateOnboardingGuidance(
+            step: .welcome,
+            ocrResults: ocrResults
+        )
         
         await speak(welcomeMessage)
         addMessage(welcomeMessage, isUser: false)
     }
     
-    func processUserResponse(_ response: String) async -> String {
+    func processUserResponse(_ response: String) async -> ConversationResponse {
+        await MainActor.run {
+            isGeminiProcessing = true
+        }
+        
+        // Create conversation context
+        let context = OnboardingContext(
+            currentStep: currentOnboardingStep,
+            userData: currentOCRResults,
+            conversationHistory: conversationHistory
+        )
+        
+        // Use Gemini to process the response
+        let geminiResponse = await geminiService.processUserResponse(response, context: context)
+        
+        await MainActor.run {
+            isGeminiProcessing = false
+        }
+        
+        // Speak the response
+        await speak(geminiResponse.message)
+        
+        return geminiResponse
+    }
+    
+    func advanceToNextStep() async {
+        switch currentOnboardingStep {
+        case .welcome:
+            currentOnboardingStep = .documentCapture
+        case .documentCapture:
+            currentOnboardingStep = .dataVerification
+        case .dataVerification:
+            currentOnboardingStep = .voiceVerification
+        case .voiceVerification:
+            currentOnboardingStep = .additionalInfo
+        case .additionalInfo:
+            currentOnboardingStep = .finalConfirmation
+        case .finalConfirmation:
+            // Onboarding complete
+            break
+        }
+        
+        // Generate guidance for the new step
+        let guidance = await geminiService.generateOnboardingGuidance(
+            step: currentOnboardingStep,
+            ocrResults: currentOCRResults
+        )
+        
+        await speak(guidance)
+        addMessage(guidance, isUser: false)
+    }
+    
+    func updateOCRResults(_ newResults: OCRResults) {
+        currentOCRResults = newResults
+    }
+    
+    func analyzeINEDocument() async -> INEAnalysis {
+        return await geminiService.analyzeINEDocument(currentOCRResults)
+    }
+    
+    // MARK: - Legacy Methods (for backward compatibility)
+    func processUserResponseLegacy(_ response: String) async -> String {
         addMessage(response, isUser: true)
         
         // Simple response processing (in a real app, you'd use more sophisticated NLP)

@@ -2,11 +2,14 @@ import SwiftUI
 
 struct OCRResultsView: View {
     @StateObject private var elevenLabsService = ElevenLabsService.shared
+    @StateObject private var geminiService = GeminiAIService.shared
     @State private var currentStep = 0
     @State private var userInput = ""
     @State private var isEditing = false
     @State private var showVoiceInterface = false
     @State private var updatedResults: OCRResults
+    @State private var ineAnalysis: INEAnalysis?
+    @State private var showAnalysis = false
     let results: OCRResults
     let onComplete: () -> Void
     
@@ -55,11 +58,13 @@ struct OCRResultsView: View {
                         // Current step content
                         switch currentStep {
                         case 0:
-                            DataConfirmationView(
+                            INEDataConfirmationView(
                                 results: updatedResults,
+                                analysis: ineAnalysis,
                                 onEdit: { field, newValue in
                                     updateField(field, with: newValue)
-                                }
+                                },
+                                showAnalysis: $showAnalysis
                             )
                         case 1:
                             VoiceConversationView(
@@ -100,6 +105,13 @@ struct OCRResultsView: View {
     
     private func startVoiceConversation() {
         Task {
+            // Update ElevenLabs with current results
+            elevenLabsService.updateOCRResults(updatedResults)
+            
+            // Analyze INE document with Gemini
+            ineAnalysis = await geminiService.analyzeINEDocument(updatedResults)
+            
+            // Start Gemini-powered conversation
             await elevenLabsService.startOnboardingConversation(ocrResults: updatedResults)
         }
     }
@@ -118,13 +130,22 @@ struct OCRResultsView: View {
             nationality: field == .nationality ? value : updatedResults.nationality,
             address: field == .address ? value : updatedResults.address,
             occupation: field == .occupation ? value : updatedResults.occupation,
-            incomeSource: field == .incomeSource ? value : updatedResults.incomeSource
+            incomeSource: field == .incomeSource ? value : updatedResults.incomeSource,
+            curp: field == .curp ? value : updatedResults.curp,
+            sex: field == .sex ? value : updatedResults.sex,
+            electoralSection: field == .electoralSection ? value : updatedResults.electoralSection,
+            locality: field == .locality ? value : updatedResults.locality,
+            municipality: field == .municipality ? value : updatedResults.municipality,
+            state: field == .state ? value : updatedResults.state,
+            expirationDate: field == .expirationDate ? value : updatedResults.expirationDate,
+            issueDate: field == .issueDate ? value : updatedResults.issueDate
         )
     }
 }
 
 enum DataField {
     case firstName, lastName, middleName, dateOfBirth, documentNumber, nationality, address, occupation, incomeSource
+    case curp, sex, electoralSection, locality, municipality, state, expirationDate, issueDate
 }
 
 struct ProgressIndicator: View {
@@ -414,7 +435,15 @@ struct AdditionalInfoView: View {
                     nationality: results.nationality,
                     address: results.address,
                     occupation: occupation,
-                    incomeSource: incomeSource
+                    incomeSource: incomeSource,
+                    curp: results.curp,
+                    sex: results.sex,
+                    electoralSection: results.electoralSection,
+                    locality: results.locality,
+                    municipality: results.municipality,
+                    state: results.state,
+                    expirationDate: results.expirationDate,
+                    issueDate: results.issueDate
                 )
                 onNext()
             }) {
@@ -559,6 +588,338 @@ struct SummaryRow: View {
             Text(value)
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(.white)
+        }
+    }
+}
+
+struct INEDataConfirmationView: View {
+    let results: OCRResults
+    let analysis: INEAnalysis?
+    let onEdit: (DataField, String) -> Void
+    @Binding var showAnalysis: Bool
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            // Header with INE validation status
+            HStack {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Datos de INE Detectados")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.white)
+                    
+                    if let analysis = analysis {
+                        HStack(spacing: 12) {
+                            Image(systemName: analysis.isValid ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                                .foregroundColor(analysis.isValid ? .green : .orange)
+                                .font(.system(size: 20))
+                            
+                            Text(analysis.isValid ? "INE Válida" : "Requiere Verificación")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(analysis.isValid ? .green : .orange)
+                            
+                            Text("Confianza: \(Int(analysis.confidence * 100))%")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white.opacity(0.8))
+                        }
+                    }
+                }
+                
+                Spacer()
+                
+                if let analysis = analysis {
+                    Button(action: {
+                        showAnalysis = true
+                    }) {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 20))
+                            .foregroundColor(.nepBlue)
+                    }
+                }
+            }
+            
+            Text("Revisa y corrige los datos extraídos de tu INE:")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(.white.opacity(0.8))
+            
+            // INE-specific data fields
+            VStack(spacing: 16) {
+                // Personal Information Section
+                PersonalInfoSection(results: results, onEdit: onEdit, handleNameEdit: handleNameEdit)
+                
+                // Location Information Section
+                LocationInfoSection(results: results, onEdit: onEdit)
+                
+                // Document Information Section
+                DocumentInfoSection(results: results, onEdit: onEdit)
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white.opacity(0.1))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                )
+        )
+        .sheet(isPresented: $showAnalysis) {
+            if let analysis = analysis {
+                INEAnalysisView(analysis: analysis)
+            }
+        }
+    }
+    
+    private func handleNameEdit(_ newValue: String) {
+        let components = newValue.components(separatedBy: " ")
+        onEdit(.firstName, components.first ?? "")
+        if components.count > 1 {
+            onEdit(.lastName, components.last ?? "")
+        }
+        if components.count > 2 {
+            onEdit(.middleName, components[1])
+        }
+    }
+}
+
+struct INEDataFieldView: View {
+    let title: String
+    let value: String
+    let onEdit: (String) -> Void
+    
+    @State private var isEditing = false
+    @State private var editedValue = ""
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(.white.opacity(0.8))
+            
+            HStack {
+                if isEditing {
+                    TextField("", text: $editedValue)
+                        .textFieldStyle(PlainTextFieldStyle())
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white)
+                        .onSubmit {
+                            onEdit(editedValue)
+                            isEditing = false
+                        }
+                } else {
+                    Text(value.isEmpty ? "No detectado" : value)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(value.isEmpty ? .white.opacity(0.5) : .white)
+                }
+                
+                Spacer()
+                
+                Button(action: {
+                    if isEditing {
+                        onEdit(editedValue)
+                    } else {
+                        editedValue = value
+                    }
+                    isEditing.toggle()
+                }) {
+                    Image(systemName: isEditing ? "checkmark" : "pencil")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.nepBlue)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.white.opacity(0.1))
+            )
+        }
+    }
+}
+
+struct INEAnalysisView: View {
+    let analysis: INEAnalysis
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                Color.nepDarkBackground.ignoresSafeArea()
+                
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
+                        // Analysis Header
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Image(systemName: analysis.isValid ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                                    .font(.system(size: 32))
+                                    .foregroundColor(analysis.isValid ? .green : .orange)
+                                
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(analysis.isValid ? "INE Válida" : "Requiere Atención")
+                                        .font(.system(size: 24, weight: .bold))
+                                        .foregroundColor(.white)
+                                    
+                                    Text("Confianza: \(Int(analysis.confidence * 100))%")
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(.white.opacity(0.8))
+                                }
+                                
+                                Spacer()
+                            }
+                        }
+                        
+                        // Missing Fields
+                        if !analysis.missingFields.isEmpty {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Campos Faltantes")
+                                    .font(.system(size: 18, weight: .bold))
+                                    .foregroundColor(.white)
+                                
+                                ForEach(analysis.missingFields, id: \.self) { field in
+                                    HStack {
+                                        Image(systemName: "exclamationmark.circle")
+                                            .foregroundColor(.orange)
+                                        Text(field)
+                                            .foregroundColor(.white)
+                                        Spacer()
+                                    }
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 8)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(Color.orange.opacity(0.1))
+                                    )
+                                }
+                            }
+                        }
+                        
+                        // Suggestions
+                        if !analysis.suggestions.isEmpty {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Sugerencias")
+                                    .font(.system(size: 18, weight: .bold))
+                                    .foregroundColor(.white)
+                                
+                                ForEach(analysis.suggestions, id: \.self) { suggestion in
+                                    HStack(alignment: .top) {
+                                        Image(systemName: "lightbulb")
+                                            .foregroundColor(.nepBlue)
+                                        Text(suggestion)
+                                            .foregroundColor(.white)
+                                        Spacer()
+                                    }
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 8)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(Color.nepBlue.opacity(0.1))
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    .padding(20)
+                }
+            }
+            .navigationTitle("Análisis de INE")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Cerrar") {
+                        dismiss()
+                    }
+                    .foregroundColor(.nepBlue)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Section Components
+struct PersonalInfoSection: View {
+    let results: OCRResults
+    let onEdit: (DataField, String) -> Void
+    let handleNameEdit: (String) -> Void
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            INEDataFieldView(
+                title: "Nombre Completo",
+                value: results.fullName,
+                onEdit: handleNameEdit
+            )
+            
+            INEDataFieldView(
+                title: "CURP",
+                value: results.curp,
+                onEdit: { onEdit(.curp, $0) }
+            )
+            
+            INEDataFieldView(
+                title: "Fecha de Nacimiento",
+                value: results.dateOfBirth,
+                onEdit: { onEdit(.dateOfBirth, $0) }
+            )
+            
+            INEDataFieldView(
+                title: "Número de INE",
+                value: results.documentNumber,
+                onEdit: { onEdit(.documentNumber, $0) }
+            )
+        }
+    }
+}
+
+struct LocationInfoSection: View {
+    let results: OCRResults
+    let onEdit: (DataField, String) -> Void
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            INEDataFieldView(
+                title: "Estado",
+                value: results.state,
+                onEdit: { onEdit(.state, $0) }
+            )
+            
+            INEDataFieldView(
+                title: "Municipio",
+                value: results.municipality,
+                onEdit: { onEdit(.municipality, $0) }
+            )
+            
+            INEDataFieldView(
+                title: "Localidad",
+                value: results.locality,
+                onEdit: { onEdit(.locality, $0) }
+            )
+            
+            INEDataFieldView(
+                title: "Sección Electoral",
+                value: results.electoralSection,
+                onEdit: { onEdit(.electoralSection, $0) }
+            )
+        }
+    }
+}
+
+struct DocumentInfoSection: View {
+    let results: OCRResults
+    let onEdit: (DataField, String) -> Void
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            INEDataFieldView(
+                title: "Fecha de Emisión",
+                value: results.issueDate,
+                onEdit: { onEdit(.issueDate, $0) }
+            )
+            
+            INEDataFieldView(
+                title: "Fecha de Vencimiento",
+                value: results.expirationDate,
+                onEdit: { onEdit(.expirationDate, $0) }
+            )
         }
     }
 }
