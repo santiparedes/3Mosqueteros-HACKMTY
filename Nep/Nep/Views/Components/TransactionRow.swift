@@ -35,11 +35,6 @@ struct TransactionRow: View {
                     .font(.system(size: 16, weight: .bold))
                     .foregroundColor(transaction.isDebit ? .nepError : .nepAccent)
                 
-                if transaction.type == "Conversion" {
-                    Text("€1,727.08")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.nepTextSecondary)
-                }
             }
         }
         .padding(.horizontal, 16)
@@ -50,8 +45,6 @@ struct TransactionRow: View {
     
     private var iconName: String {
         switch transaction.type.lowercased() {
-        case "conversion":
-            return "arrow.left.arrow.right"
         case "transfer":
             return "person.circle"
         case "purchase":
@@ -70,8 +63,6 @@ struct TransactionRow: View {
     
     private var iconBackgroundColor: Color {
         switch transaction.type.lowercased() {
-        case "conversion":
-            return Color.nepBlue.opacity(0.2)
         case "transfer":
             return Color.nepAccent.opacity(0.2)
         case "purchase":
@@ -83,8 +74,6 @@ struct TransactionRow: View {
     
     private var iconColor: Color {
         switch transaction.type.lowercased() {
-        case "conversion":
-            return .nepBlue
         case "transfer":
             return .nepAccent
         case "purchase":

@@ -76,17 +76,6 @@ struct MockData {
     static let sampleTransactions = [
         Transaction(
             id: "1",
-            type: "Conversion",
-            transactionDate: "2024-01-15",
-            status: "completed",
-            payer: Payer(name: "USD Account", id: "acc1"),
-            payee: Payee(name: "EUR Account", id: "acc2"),
-            amount: 2000.00,
-            medium: "balance",
-            description: "Conversion USD → EUR"
-        ),
-        Transaction(
-            id: "2",
             type: "Transfer",
             transactionDate: "2024-01-15",
             status: "completed",
@@ -97,7 +86,7 @@ struct MockData {
             description: "Transfers"
         ),
         Transaction(
-            id: "3",
+            id: "2",
             type: "Purchase",
             transactionDate: "2024-01-15",
             status: "completed",
@@ -108,7 +97,7 @@ struct MockData {
             description: "Taxi"
         ),
         Transaction(
-            id: "4",
+            id: "3",
             type: "Purchase",
             transactionDate: "2024-01-14",
             status: "completed",
@@ -119,7 +108,7 @@ struct MockData {
             description: "Grocery Shop"
         ),
         Transaction(
-            id: "5",
+            id: "4",
             type: "Purchase",
             transactionDate: "2024-01-14",
             status: "completed",
@@ -130,7 +119,7 @@ struct MockData {
             description: "Food delivery"
         ),
         Transaction(
-            id: "6",
+            id: "5",
             type: "Deposit",
             transactionDate: "2024-01-13",
             status: "completed",
@@ -141,7 +130,7 @@ struct MockData {
             description: "Monthly Salary"
         ),
         Transaction(
-            id: "7",
+            id: "6",
             type: "Purchase",
             transactionDate: "2024-01-12",
             status: "completed",

@@ -75,7 +75,7 @@ Para usar la API real de Nessie:
 ### 2. Dashboard Principal
 - Balances en múltiples monedas
 - Selector de cuentas
-- Botones de acción (Add, Send, Convert, More)
+- Botones de acción (Add, Send, Quantum)
 - Lista de transacciones recientes
 
 ### 3. Detalles de Tarjeta

@@ -520,7 +520,6 @@ struct ActionButtonsView: View {
     let actions = [
         ("ADD", "plus"),
         ("SEND", "arrow.up"),
-        ("CONVERT", "arrow.left.arrow.right"),
         ("QUANTUM", "shield.lefthalf.filled")
     ]
     
