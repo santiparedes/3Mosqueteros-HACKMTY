@@ -11,6 +11,9 @@ import time
 from datetime import datetime
 import uvicorn
 
+# Import Nessie integration
+from routes.nessie_integration import router as nessie_router
+
 # Database setup
 SQLALCHEMY_DATABASE_URL = "sqlite:///./quantum_wallet.db"
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
@@ -123,6 +126,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include Nessie router
+app.include_router(nessie_router)
 
 # Dependency to get DB session
 def get_db():
@@ -369,6 +375,26 @@ async def seal_block(db: Session):
         db.add(proof_record)
     
     db.commit()
+
+@app.get("/transactions")
+async def get_transactions(db: Session = Depends(get_db)):
+    """Get all transactions"""
+    transactions = db.query(Transaction).order_by(Transaction.timestamp.desc()).all()
+    
+    result = []
+    for tx in transactions:
+        result.append({
+            "tx_id": tx.id,
+            "from_wallet": tx.wallet_id,
+            "to_wallet": tx.to_wallet,
+            "amount": tx.amount,
+            "currency": tx.currency,
+            "status": tx.status,
+            "timestamp": tx.timestamp,
+            "block_id": tx.block_id
+        })
+    
+    return {"transactions": result}
 
 @app.get("/")
 async def root():

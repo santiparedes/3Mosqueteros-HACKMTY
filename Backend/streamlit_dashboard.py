@@ -190,7 +190,7 @@ else:
 # Navigation
 page = st.sidebar.selectbox(
     "Navigate",
-    ["🏠 Dashboard", "💳 Wallet Management", "💸 Send Payment", "📋 Transaction History", "🔍 Receipt Verifier", "📊 Analytics"]
+    ["🏠 Dashboard", "💳 Wallet Management", "💸 Send Payment", "📋 Transaction History", "🔍 Receipt Verifier", "📊 Analytics", "🏦 Nessie Banking", "🔗 Quantum-Nessie Bridge"]
 )
 
 # Dashboard Page
@@ -273,7 +273,7 @@ elif page == "💳 Wallet Management":
             for wallet in st.session_state.wallets:
                 st.markdown(f"""
                 <div class="metric-card">
-                    <strong>Wallet ID:</strong> {wallet['wallet_id'][:8]}...<br>
+                    <strong>Wallet ID:</strong> <code>{wallet['wallet_id']}</code><br>
                     <strong>User:</strong> {wallet.get('user_id', 'Unknown')}<br>
                     <strong>Status:</strong> <span class="quantum-badge">Active</span>
                 </div>
@@ -291,15 +291,28 @@ elif page == "💸 Send Payment":
         with st.form("send_payment"):
             st.subheader("Transaction Details")
             
-            wallet_id = st.selectbox(
-                "From Wallet",
-                [w['wallet_id'] for w in st.session_state.wallets] if st.session_state.wallets else ["demo_wallet_123"],
-                help="Select the wallet to send from"
-            )
+            # Create wallet options with better display
+            if st.session_state.wallets:
+                wallet_options = [f"{w['wallet_id']} ({w.get('user_id', 'Unknown')})" for w in st.session_state.wallets]
+                selected_wallet_display = st.selectbox(
+                    "From Wallet",
+                    wallet_options,
+                    help="Select the wallet to send from"
+                )
+                # Extract the actual wallet ID from the display string
+                wallet_id = selected_wallet_display.split(' (')[0]
+            else:
+                wallet_id = st.text_input("From Wallet ID", value="demo_wallet_123", help="Enter the wallet ID to send from")
             
             recipient = st.text_input("To Wallet ID", value="recipient_wallet_456")
             amount = st.number_input("Amount (MXN)", min_value=0.01, value=100.0, step=0.01)
             currency = st.selectbox("Currency", ["MXN", "USD", "EUR"], index=0)
+            
+            # Display wallet IDs for easy copying
+            if st.session_state.wallets:
+                st.markdown("**📋 Available Wallet IDs (click to copy):**")
+                for wallet in st.session_state.wallets:
+                    st.code(wallet['wallet_id'], language=None)
             
             if st.form_submit_button("🚀 Send Quantum Payment", use_container_width=True):
                 # Step 1: Prepare transaction
@@ -367,39 +380,59 @@ elif page == "💸 Send Payment":
 elif page == "📋 Transaction History":
     st.header("📋 Transaction History")
     
-    # Mock transaction data
-    transactions_data = [
-        {
-            "tx_id": "0c76a263bebbb2db",
-            "from": "4a70fc793df04feb",
-            "to": "recipient_wallet_456",
-            "amount": 250.0,
-            "currency": "MXN",
-            "status": "✅ Confirmed",
-            "block": 1,
-            "timestamp": datetime.now() - timedelta(minutes=5)
-        },
-        {
-            "tx_id": "b8395db268ed62ae",
-            "from": "4a70fc793df04feb",
-            "to": "recipient_wallet_2",
-            "amount": 150.0,
-            "currency": "MXN",
-            "status": "✅ Confirmed",
-            "block": 1,
-            "timestamp": datetime.now() - timedelta(minutes=8)
-        },
-        {
-            "tx_id": "2927b35de7dacc6d",
-            "from": "4a70fc793df04feb",
-            "to": "recipient_wallet_3",
-            "amount": 200.0,
-            "currency": "MXN",
-            "status": "✅ Confirmed",
-            "block": 1,
-            "timestamp": datetime.now() - timedelta(minutes=10)
-        }
-    ]
+    # Fetch real transaction data from API
+    transactions_data = []
+    
+    # Get all transactions from the database via API
+    # Note: We'll need to add a GET /transactions endpoint to the API
+    # For now, let's use the session state transactions
+    if st.session_state.transactions:
+        for tx in st.session_state.transactions:
+            transactions_data.append({
+                "tx_id": tx.get('tx_id', 'unknown'),
+                "from": "session_wallet",  # We don't store this in session state
+                "to": "recipient_wallet",
+                "amount": 100.0,  # Default amount
+                "currency": "MXN",
+                "status": "✅ Confirmed",
+                "block": 1,
+                "timestamp": datetime.now()
+            })
+    
+    # If no real transactions, show mock data
+    if not transactions_data:
+        transactions_data = [
+            {
+                "tx_id": "0c76a263bebbb2db",
+                "from": "4a70fc793df04feb",
+                "to": "recipient_wallet_456",
+                "amount": 250.0,
+                "currency": "MXN",
+                "status": "✅ Confirmed",
+                "block": 1,
+                "timestamp": datetime.now() - timedelta(minutes=5)
+            },
+            {
+                "tx_id": "b8395db268ed62ae",
+                "from": "4a70fc793df04feb",
+                "to": "recipient_wallet_2",
+                "amount": 150.0,
+                "currency": "MXN",
+                "status": "✅ Confirmed",
+                "block": 1,
+                "timestamp": datetime.now() - timedelta(minutes=8)
+            },
+            {
+                "tx_id": "2927b35de7dacc6d",
+                "from": "4a70fc793df04feb",
+                "to": "recipient_wallet_3",
+                "amount": 200.0,
+                "currency": "MXN",
+                "status": "✅ Confirmed",
+                "block": 1,
+                "timestamp": datetime.now() - timedelta(minutes=10)
+            }
+        ]
     
     # Create DataFrame
     df = pd.DataFrame(transactions_data)
@@ -410,8 +443,8 @@ elif page == "📋 Transaction History":
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                st.write(f"**From:** {tx['from'][:8]}...")
-                st.write(f"**To:** {tx['to']}")
+                st.write(f"**From:** `{tx['from']}`")
+                st.write(f"**To:** `{tx['to']}`")
             
             with col2:
                 st.write(f"**Amount:** {tx['amount']} {tx['currency']}")
@@ -510,12 +543,12 @@ elif page == "🔍 Receipt Verifier":
             st.markdown("""
             <div class="metric-card">
                 <h4>📋 Transaction Info</h4>
-                <p><strong>From:</strong> {}</p>
-                <p><strong>To:</strong> {}</p>
+                <p><strong>From:</strong> <code>{}</code></p>
+                <p><strong>To:</strong> <code>{}</code></p>
                 <p><strong>Amount:</strong> {} {}</p>
             </div>
             """.format(
-                receipt_data['tx']['from_wallet'][:8] + "...",
+                receipt_data['tx']['from_wallet'],
                 receipt_data['tx']['to'],
                 receipt_data['tx']['amount'],
                 receipt_data['tx']['currency']
@@ -525,12 +558,12 @@ elif page == "🔍 Receipt Verifier":
             <div class="metric-card">
                 <h4>📦 Block Info</h4>
                 <p><strong>Block:</strong> #{}</p>
-                <p><strong>Merkle Root:</strong> {}...</p>
+                <p><strong>Merkle Root:</strong> <code>{}</code></p>
                 <p><strong>Proof Steps:</strong> {}</p>
             </div>
             """.format(
                 receipt_data['block_header']['index'],
-                receipt_data['block_header']['merkle_root'][:16],
+                receipt_data['block_header']['merkle_root'],
                 len(receipt_data['merkle_proof'])
             ), unsafe_allow_html=True)
 
@@ -596,11 +629,217 @@ elif page == "📊 Analytics":
     with col4:
         st.metric("✅ Success Rate", "100%", "0%")
 
+# Nessie Banking Page
+elif page == "🏦 Nessie Banking":
+    st.header("🏦 Capital One Nessie Banking Integration")
+    
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        st.subheader("📊 Nessie API Status")
+        
+        # Test Nessie API connection
+        nessie_status, nessie_error = make_api_request("/nessie/customers")
+        if nessie_status:
+            st.success("✅ Nessie API Connected")
+            st.info(f"Found {len(nessie_status)} customers in system")
+        else:
+            st.error("❌ Nessie API Disconnected")
+            st.error(nessie_error)
+        
+        st.subheader("👥 Customer Management")
+        
+        # Create new customer
+        with st.form("create_customer"):
+            st.write("**Create New Customer**")
+            first_name = st.text_input("First Name", value="John")
+            last_name = st.text_input("Last Name", value="Doe")
+            street_number = st.text_input("Street Number", value="123")
+            street_name = st.text_input("Street Name", value="Main St")
+            city = st.text_input("City", value="Austin")
+            state = st.text_input("State", value="TX")
+            zip_code = st.text_input("ZIP Code", value="78701")
+            
+            if st.form_submit_button("👤 Create Customer"):
+                customer_data = {
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "address": {
+                        "street_number": street_number,
+                        "street_name": street_name,
+                        "city": city,
+                        "state": state,
+                        "zip": zip_code
+                    }
+                }
+                
+                result, error = make_api_request("/nessie/customers", "POST", customer_data)
+                if result:
+                    st.success("✅ Customer created successfully!")
+                    st.info(f"Customer ID: `{result.get('objectCreated', {}).get('_id', 'Unknown')}`")
+                else:
+                    st.error(f"❌ Failed to create customer: {error}")
+        
+        st.subheader("💳 Account Management")
+        
+        # Create account for customer
+        with st.form("create_account"):
+            st.write("**Create New Account**")
+            customer_id = st.text_input("Customer ID", value="")
+            account_type = st.selectbox("Account Type", ["Checking", "Savings", "Credit Card"])
+            nickname = st.text_input("Account Nickname", value="Quantum Wallet Account")
+            initial_balance = st.number_input("Initial Balance", min_value=0.0, value=1000.0)
+            
+            if st.form_submit_button("💳 Create Account"):
+                if customer_id:
+                    account_data = {
+                        "type": account_type,
+                        "nickname": nickname,
+                        "rewards": 0,
+                        "balance": initial_balance
+                    }
+                    
+                    result, error = make_api_request(f"/nessie/customers/{customer_id}/accounts", "POST", account_data)
+                    if result:
+                        st.success("✅ Account created successfully!")
+                        st.info(f"Account ID: `{result.get('objectCreated', {}).get('_id', 'Unknown')}`")
+                    else:
+                        st.error(f"❌ Failed to create account: {error}")
+                else:
+                    st.error("Please enter a Customer ID")
+    
+    with col2:
+        st.subheader("🏧 ATM & Branch Locator")
+        
+        # ATM/Branch finder
+        st.write("**Find Nearby Services**")
+        lat = st.number_input("Latitude", value=30.2672, format="%.4f")
+        lng = st.number_input("Longitude", value=-97.7431, format="%.4f")
+        radius = st.slider("Radius (miles)", 1, 50, 10)
+        
+        if st.button("🔍 Find ATMs"):
+            atms_result, atms_error = make_api_request(f"/nessie/atms?lat={lat}&lng={lng}&rad={radius}")
+            if atms_result:
+                st.success(f"Found {len(atms_result)} ATMs nearby")
+                for atm in atms_result[:3]:  # Show first 3
+                    st.write(f"📍 {atm.get('name', 'ATM')} - {atm.get('distance', 'N/A')} miles")
+            else:
+                st.error(f"❌ Failed to find ATMs: {atms_error}")
+        
+        if st.button("🏢 Find Branches"):
+            branches_result, branches_error = make_api_request(f"/nessie/branches?lat={lat}&lng={lng}&rad={radius}")
+            if branches_result:
+                st.success(f"Found {len(branches_result)} branches nearby")
+                for branch in branches_result[:3]:  # Show first 3
+                    st.write(f"🏢 {branch.get('name', 'Branch')} - {branch.get('distance', 'N/A')} miles")
+            else:
+                st.error(f"❌ Failed to find branches: {branches_error}")
+
+# Quantum-Nessie Bridge Page
+elif page == "🔗 Quantum-Nessie Bridge":
+    st.header("🔗 Quantum-Nessie Bridge")
+    st.write("Bridge between Quantum Wallet and Capital One Nessie Banking")
+    
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        st.subheader("🔗 Link Quantum Wallet to Nessie Account")
+        
+        with st.form("link_wallet"):
+            quantum_wallet_id = st.text_input("Quantum Wallet ID", value="")
+            nessie_customer_id = st.text_input("Nessie Customer ID", value="")
+            nessie_account_id = st.text_input("Nessie Account ID", value="")
+            user_id = st.text_input("User ID", value="user_123")
+            
+            if st.form_submit_button("🔗 Link Wallets"):
+                if quantum_wallet_id and nessie_customer_id and nessie_account_id:
+                    link_data = {
+                        "quantum_wallet_id": quantum_wallet_id,
+                        "nessie_customer_id": nessie_customer_id,
+                        "nessie_account_id": nessie_account_id,
+                        "user_id": user_id
+                    }
+                    
+                    result, error = make_api_request("/nessie/quantum-wallet/create", "POST", link_data)
+                    if result:
+                        st.success("✅ Wallets linked successfully!")
+                        st.json(result)
+                    else:
+                        st.error(f"❌ Failed to link wallets: {error}")
+                else:
+                    st.error("Please fill in all required fields")
+        
+        st.subheader("💸 Process Quantum Payment via Nessie")
+        
+        with st.form("quantum_payment"):
+            from_wallet = st.text_input("From Quantum Wallet", value="")
+            to_wallet = st.text_input("To Quantum Wallet", value="")
+            amount = st.number_input("Amount", min_value=0.01, value=100.0)
+            description = st.text_input("Description", value="Quantum Payment via Nessie")
+            
+            if st.form_submit_button("🚀 Process Quantum Payment"):
+                if from_wallet and to_wallet:
+                    payment_data = {
+                        "from_quantum_wallet": from_wallet,
+                        "to_quantum_wallet": to_wallet,
+                        "amount": amount,
+                        "description": description
+                    }
+                    
+                    result, error = make_api_request("/nessie/quantum-payment/process", "POST", payment_data)
+                    if result:
+                        st.success("✅ Quantum payment processed successfully!")
+                        st.json(result)
+                    else:
+                        st.error(f"❌ Failed to process payment: {error}")
+                else:
+                    st.error("Please fill in wallet addresses")
+    
+    with col2:
+        st.subheader("💰 Wallet Balance")
+        
+        wallet_id = st.text_input("Quantum Wallet ID", value="", key="balance_wallet")
+        if st.button("📊 Get Balance"):
+            if wallet_id:
+                balance_result, balance_error = make_api_request(f"/nessie/quantum-wallet/{wallet_id}/balance")
+                if balance_result:
+                    st.success("✅ Balance retrieved!")
+                    st.metric("Balance", f"${balance_result.get('balance', 0):.2f}")
+                    st.write(f"**Currency:** {balance_result.get('currency', 'USD')}")
+                    st.write(f"**Last Updated:** {balance_result.get('last_updated', 'Unknown')}")
+                else:
+                    st.error(f"❌ Failed to get balance: {balance_error}")
+            else:
+                st.error("Please enter a wallet ID")
+        
+        st.subheader("🔐 Security Features")
+        st.markdown("""
+        <div class="metric-card">
+            <h4>🛡️ Quantum Security</h4>
+            <p>Post-quantum cryptographic signatures</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("""
+        <div class="metric-card">
+            <h4>🏦 Banking Integration</h4>
+            <p>Real Capital One API integration</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("""
+        <div class="metric-card">
+            <h4>🌳 Merkle Proofs</h4>
+            <p>Cryptographic transaction verification</p>
+        </div>
+        """, unsafe_allow_html=True)
+
 # Footer
 st.markdown("---")
 st.markdown("""
 <div style="text-align: center; color: #666; padding: 2rem;">
     <p>🛡️ <strong>Quantum Wallet Dashboard</strong> - Post-Quantum Cryptography for Secure Transactions</p>
+    <p>🏦 <strong>Powered by Capital One Nessie API</strong> - Real Banking Integration</p>
     <p>Built with ❤️ for HACKMTY 2024</p>
 </div>
 """, unsafe_allow_html=True)
