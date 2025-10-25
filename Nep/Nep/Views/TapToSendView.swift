@@ -117,11 +117,9 @@ struct TapToSendView: View {
         .fullScreenCover(isPresented: $showBiometricAuth) {
             BiometricAuthView(
                 onSuccess: {
-                    withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                        showAmountInput = true
-                        showConfirmation = true
-                    }
+                    // After auth, go to connection screen first (not confirmation)
                     showBiometricAuth = false
+                    showConnectionConfirmation = true
                 },
                 onCancel: {
                     showBiometricAuth = false
@@ -137,10 +135,16 @@ struct TapToSendView: View {
                     // Update the amount and message with edited values
                     amount = confirmedAmount
                     message = confirmedMessage
+                    
+                    // Send the payment immediately since we're already connected
+                    tapToSendService.initiateTapToSend(
+                        amount: confirmedAmount,
+                        currency: currency,
+                        message: confirmedMessage
+                    )
+                    
                     showConfirmation = false
                     showSearchSheet = true
-                    // Start automatic device finding every 3 seconds
-                    startAutoDeviceSearch()
                 },
                 onCancel: {
                     showConfirmation = false
@@ -170,9 +174,16 @@ struct TapToSendView: View {
         }
         .fullScreenCover(isPresented: $showConnectionConfirmation) {
             ConnectionConfirmationView(
+                isSendingMode: isSendingMode,
                 onConfirm: {
                     showConnectionConfirmation = false
-                    showWaitingForPayment = true
+                    if isSendingMode {
+                        // Sender: Go to amount confirmation after connection
+                        showConfirmation = true
+                    } else {
+                        // Receiver: Go to waiting for payment
+                        showWaitingForPayment = true
+                    }
                 },
                 onCancel: {
                     showConnectionConfirmation = false
@@ -449,10 +460,6 @@ struct TapToSendView: View {
         return formatter.string(from: NSNumber(value: amount)) ?? "$0.00"
     }
     
-    private func startAutoDeviceSearch() {
-        // Start browsing once and let the service handle reconnection
-        tapToSendService.startBrowsing()
-    }
     
     private func printReceipt() {
         // Create receipt data
@@ -1364,6 +1371,8 @@ struct SearchProgressView: View {
         }
         .onAppear {
             startSearchProgress()
+            // Browsing is already started from confirmation screen
+            // Just monitor the connection status
         }
         .onDisappear {
             tapToSendService.stopBrowsing()
@@ -1660,6 +1669,7 @@ struct PaymentReceivedView: View {
 
 // MARK: - Connection Confirmation View
 struct ConnectionConfirmationView: View {
+    let isSendingMode: Bool
     let onConfirm: () -> Void
     let onCancel: () -> Void
     
@@ -1712,13 +1722,13 @@ struct ConnectionConfirmationView: View {
                     }
                     
                     VStack(spacing: 12) {
-                        Text(connectionEstablished ? "Device Connected!" : "Waiting for Connection")
+                        Text(connectionEstablished ? "Device Connected!" : (isSendingMode ? "Looking for Receiver" : "Waiting for Connection"))
                             .font(.system(size: 28, weight: .bold, design: .rounded))
                             .foregroundColor(.primary)
                         
                         Text(connectionEstablished ? 
-                             "A device is ready to send you money" : 
-                             "Bring another device close and tap them together")
+                             (isSendingMode ? "Ready to send money!" : "A device is ready to send you money") : 
+                             (isSendingMode ? "Looking for a device to send money to" : "Bring another device close and tap them together"))
                             .font(.system(size: 17, weight: .medium))
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
@@ -1764,7 +1774,7 @@ struct ConnectionConfirmationView: View {
                             HStack(spacing: 8) {
                                 Image(systemName: "checkmark.circle.fill")
                                     .font(.system(size: 18, weight: .medium))
-                                Text("Ready to Receive")
+                                Text(isSendingMode ? "Ready to Send" : "Ready to Receive")
                                     .font(.system(size: 17, weight: .semibold))
                             }
                             .foregroundColor(.white)
@@ -1797,7 +1807,7 @@ struct ConnectionConfirmationView: View {
             .padding(.horizontal, 24)
             .padding(.bottom, 40)
             .background(Color(.systemBackground))
-            .navigationTitle("Receive Money")
+            .navigationTitle(isSendingMode ? "Send Money" : "Receive Money")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -1810,10 +1820,13 @@ struct ConnectionConfirmationView: View {
         }
         .onAppear {
             isPulsing = true
+            // Start BOTH advertising and browsing for maximum connectivity
             tapToSendService.startAdvertising()
+            tapToSendService.startBrowsing()
         }
         .onDisappear {
             tapToSendService.stopAdvertising()
+            tapToSendService.stopBrowsing()
         }
         .onChange(of: tapToSendService.isConnected) { isConnected in
             withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
@@ -1964,6 +1977,36 @@ struct DebugInfoView: View {
             .frame(maxWidth: .infinity)
             .padding()
             .background(Color.blue)
+            .cornerRadius(12)
+            
+            Button("Force Restart Browsing") {
+                tapToSendService.forceRestartBrowsing()
+            }
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(Color.green)
+            .cornerRadius(12)
+            
+            Button("Test Advertiser Delegate") {
+                tapToSendService.testAdvertiserDelegate()
+            }
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(Color.purple)
+            .cornerRadius(12)
+            
+            Button("Send Pending Payment") {
+                tapToSendService.sendPendingPaymentToConnectedPeers()
+            }
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(Color.orange)
             .cornerRadius(12)
         }
     }

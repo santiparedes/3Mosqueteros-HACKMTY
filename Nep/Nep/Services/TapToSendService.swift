@@ -64,6 +64,9 @@ class TapToSendService: NSObject, ObservableObject {
         advertiser = MCNearbyServiceAdvertiser(peer: myPeerID, discoveryInfo: discoveryInfo, serviceType: serviceType)
         advertiser.delegate = self
         addDebugMessage("✅ MCNearbyServiceAdvertiser created")
+        addDebugMessage("🔍 Advertiser delegate set: \(advertiser.delegate != nil ? "✅ YES" : "❌ NO")")
+        addDebugMessage("🔍 Advertiser peer ID: \(advertiser.myPeerID.displayName)")
+        addDebugMessage("🔍 Advertiser service type: \(serviceType)")
         
         // Create browser with same peer ID
         browser = MCNearbyServiceBrowser(peer: myPeerID, serviceType: serviceType)
@@ -341,9 +344,15 @@ class TapToSendService: NSObject, ObservableObject {
         
         // Ensure advertising starts on main thread
         DispatchQueue.main.async {
+            self.addDebugMessage("🔍 About to start advertising...")
+            self.addDebugMessage("🔍 Advertiser delegate before start: \(self.advertiser.delegate != nil ? "✅ SET" : "❌ NOT SET")")
+            self.addDebugMessage("🔍 Advertiser peer ID: \(self.advertiser.myPeerID.displayName)")
+            self.addDebugMessage("🔍 Advertiser service type: \(self.serviceType)")
+            
             self.advertiser.startAdvertisingPeer()
             self.isAdvertising = true
             self.addDebugMessage("✅ Advertising started successfully")
+            self.addDebugMessage("🔍 Advertiser delegate after start: \(self.advertiser.delegate != nil ? "✅ STILL SET" : "❌ LOST")")
             
             // Add periodic status check
             self.startAdvertisingStatusCheck()
@@ -412,6 +421,8 @@ class TapToSendService: NSObject, ObservableObject {
     }
     
     func startBrowsing() {
+        addDebugMessage("🔍 startBrowsing() called - current isBrowsing: \(isBrowsing)")
+        
         // Force Local Network permission request before browsing
         forceLocalNetworkPermissionRequest()
         
@@ -458,8 +469,9 @@ class TapToSendService: NSObject, ObservableObject {
     }
     
     func stopBrowsing() {
+        addDebugMessage("🛑 stopBrowsing() called - current isBrowsing: \(isBrowsing)")
         guard isBrowsing else { 
-            addDebugMessage("⚠️ Not currently browsing")
+            addDebugMessage("⚠️ Not currently browsing - no action needed")
             return 
         }
         addDebugMessage("🛑 Stopping browsing")
@@ -506,10 +518,7 @@ class TapToSendService: NSObject, ObservableObject {
     }
     
     func initiateTapToSend(amount: Double, currency: String = "USD", message: String = "") {
-        // Start advertising to receive connections
-        startAdvertising()
-        
-        // Store pending payment info
+        // Store pending payment info first
         pendingPayment = PendingPayment(
             amount: amount,
             currency: currency,
@@ -518,6 +527,18 @@ class TapToSendService: NSObject, ObservableObject {
         )
         
         addDebugMessage("💸 Initiated tap-to-send for \(amount) \(currency)")
+        addDebugMessage("🔍 Connected peers: \(connectedPeers.count)")
+        
+        // If already connected, send payment immediately
+        if !connectedPeers.isEmpty {
+            addDebugMessage("💸 Already connected to peers, sending payment immediately...")
+            sendPendingPaymentToConnectedPeers()
+        } else {
+            addDebugMessage("🔄 No connected peers, starting advertising and browsing...")
+            // Start BOTH advertising AND browsing for maximum connectivity
+            startAdvertising()
+            startBrowsing()
+        }
         
         // Set up connection timeout monitoring
         setupConnectionTimeout()
@@ -570,6 +591,65 @@ class TapToSendService: NSObject, ObservableObject {
         
         addDebugMessage("✅ TapToSend service reset complete")
     }
+    
+    func forceRestartBrowsing() {
+        addDebugMessage("🔄 Force restarting browsing...")
+        
+        // Always stop browsing first
+        if isBrowsing {
+            browser.stopBrowsingForPeers()
+            isBrowsing = false
+            addDebugMessage("🛑 Stopped existing browsing for force restart")
+        }
+        
+        // Small delay then restart
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.addDebugMessage("🔄 Force restarting browsing after delay...")
+            self.startBrowsing()
+        }
+    }
+    
+    func testAdvertiserDelegate() {
+        addDebugMessage("🧪 Testing advertiser delegate...")
+        addDebugMessage("🔍 Advertiser exists: \(advertiser != nil ? "✅ YES" : "❌ NO")")
+        addDebugMessage("🔍 Advertiser delegate set: \(advertiser?.delegate != nil ? "✅ YES" : "❌ NO")")
+        addDebugMessage("🔍 Advertiser is advertising: \(isAdvertising ? "✅ YES" : "❌ NO")")
+        addDebugMessage("🔍 Advertiser peer ID: \(advertiser?.myPeerID.displayName ?? "nil")")
+        addDebugMessage("🔍 Advertiser service type: \(advertiser?.serviceType ?? "nil")")
+        addDebugMessage("🔍 Expected service type: \(serviceType)")
+        addDebugMessage("🔍 Service type match: \((advertiser?.serviceType ?? "") == serviceType ? "✅ YES" : "❌ NO")")
+        
+        // Test if we can call the delegate method (this won't actually work but shows the method exists)
+        if advertiser?.delegate != nil {
+            addDebugMessage("✅ Advertiser delegate is properly set and should receive invitations")
+        } else {
+            addDebugMessage("❌ Advertiser delegate is NOT set - invitations will be lost!")
+        }
+    }
+    
+    func sendPendingPaymentToConnectedPeers() {
+        addDebugMessage("💸 Checking for pending payment to send to connected peers...")
+        addDebugMessage("🔍 Connected peers: \(connectedPeers.count)")
+        addDebugMessage("🔍 Pending payment exists: \(pendingPayment != nil ? "✅ YES" : "❌ NO")")
+        
+        if let pending = pendingPayment, !connectedPeers.isEmpty {
+            for peer in connectedPeers {
+                addDebugMessage("💸 Sending pending payment to \(peer.displayName)")
+                sendPaymentRequest(
+                    to: peer,
+                    amount: pending.amount,
+                    currency: pending.currency,
+                    message: pending.message
+                )
+            }
+            pendingPayment = nil
+            addDebugMessage("✅ Payment sent to all connected peers")
+        } else if pendingPayment == nil {
+            addDebugMessage("ℹ️ No pending payment to send")
+        } else {
+            addDebugMessage("⚠️ No connected peers to send payment to")
+        }
+    }
 }
 
 // MARK: - MCSessionDelegate
@@ -587,11 +667,18 @@ extension TapToSendService: MCSessionDelegate {
                 self.addDebugMessage("🔗 Connected to \(peerID.displayName)")
                 self.addDebugMessage("🔍 Total connected peers: \(self.connectedPeers.count)")
                 
-                // Stop browsing once connected
+                // Stop browsing once connected to avoid conflicts
                 if self.isBrowsing {
                     self.browser.stopBrowsingForPeers()
                     self.isBrowsing = false
                     self.addDebugMessage("🛑 Stopped browsing - device connected")
+                }
+                
+                // Also stop advertising once connected to avoid duplicate connections
+                if self.isAdvertising {
+                    self.advertiser.stopAdvertisingPeer()
+                    self.isAdvertising = false
+                    self.addDebugMessage("🛑 Stopped advertising - device connected")
                 }
                 
                 // If we have a pending payment, send it immediately
@@ -697,11 +784,14 @@ extension TapToSendService: MCSessionDelegate {
 // MARK: - MCNearbyServiceAdvertiserDelegate
 extension TapToSendService: MCNearbyServiceAdvertiserDelegate {
     func advertiser(_ advertiser: MCNearbyServiceAdvertiser, didReceiveInvitationFromPeer peerID: MCPeerID, withContext context: Data?, invitationHandler: @escaping (Bool, MCSession?) -> Void) {
+        addDebugMessage("🎉 DELEGATE METHOD CALLED! advertiser(_:didReceiveInvitationFromPeer:)")
         addDebugMessage("📨 RECEIVED INVITATION from \(peerID.displayName)")
         addDebugMessage("🔍 Invitation context: \(context?.count ?? 0) bytes")
         addDebugMessage("🔍 My peer ID: \(myPeerID.displayName)")
         addDebugMessage("🔍 Session state: \(session.connectedPeers.count) connected peers")
         addDebugMessage("🔍 Advertiser delegate is active: ✅")
+        addDebugMessage("🔍 Advertiser that received invitation: \(advertiser.myPeerID.displayName)")
+        addDebugMessage("🔍 Service type match: \(advertiser.serviceType == serviceType ? "✅ YES" : "❌ NO")")
         
         // Check if we're already connected to this peer
         if connectedPeers.contains(peerID) {
@@ -774,10 +864,29 @@ extension TapToSendService: MCNearbyServiceBrowserDelegate {
         addDebugMessage("🔍 Discovery info: \(info?.description ?? "nil")")
         addDebugMessage("🔍 My peer ID: \(myPeerID.displayName)")
         addDebugMessage("🔍 Session connected peers: \(session.connectedPeers.count)")
+        addDebugMessage("🔍 Browser service type: \(browser.serviceType)")
+        addDebugMessage("🔍 Expected service type: \(serviceType)")
+        addDebugMessage("🔍 Service type match: \(browser.serviceType == serviceType ? "✅ YES" : "❌ NO")")
         
         // Check if we're already connected to this peer
         if connectedPeers.contains(peerID) {
             addDebugMessage("⚠️ Already connected to \(peerID.displayName)")
+            addDebugMessage("💸 Checking if we have pending payment to send...")
+            
+            // If we have a pending payment, send it immediately
+            if let pending = pendingPayment {
+                addDebugMessage("💸 Sending pending payment to already connected \(peerID.displayName)")
+                sendPaymentRequest(
+                    to: peerID,
+                    amount: pending.amount,
+                    currency: pending.currency,
+                    message: pending.message
+                )
+                pendingPayment = nil
+                addDebugMessage("✅ Payment sent to already connected peer")
+            } else {
+                addDebugMessage("ℹ️ No pending payment to send")
+            }
             return
         }
         

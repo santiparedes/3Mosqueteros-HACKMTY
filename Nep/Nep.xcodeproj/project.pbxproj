@@ -444,7 +444,7 @@
 				CODE_SIGN_ENTITLEMENTS = Nep/Nep.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = ZU3Y948C42;
+				DEVELOPMENT_TEAM = T4U3LQTNHW;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Nep/Info.plist;
@@ -453,7 +453,6 @@
 				INFOPLIST_KEY_NSCameraUsageDescription = "This app uses the camera to scan QR codes for quantum wallet transactions.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "This app uses Face ID to securely authenticate Tap-to-Send transactions.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "This app uses local network for secure peer-to-peer money transfers.";
-				INFOPLIST_KEY_NSCameraUsageDescription = "This app uses the camera to scan QR codes for quantum wallet transactions.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "This app uses location services to find nearby ATMs and bank branches.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIRequiredDeviceCapabilities = armv7;
@@ -465,7 +464,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = tec.mx.Nepp;
+				PRODUCT_BUNDLE_IDENTIFIER = tec.mx.Nep;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -481,7 +480,7 @@
 				CODE_SIGN_ENTITLEMENTS = Nep/Nep.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = ZU3Y948C42;
+				DEVELOPMENT_TEAM = T4U3LQTNHW;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Nep/Info.plist;
@@ -490,7 +489,6 @@
 				INFOPLIST_KEY_NSCameraUsageDescription = "This app uses the camera to scan QR codes for quantum wallet transactions.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "This app uses Face ID to securely authenticate Tap-to-Send transactions.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "This app uses local network for secure peer-to-peer money transfers.";
-				INFOPLIST_KEY_NSCameraUsageDescription = "This app uses the camera to scan QR codes for quantum wallet transactions.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "This app uses location services to find nearby ATMs and bank branches.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIRequiredDeviceCapabilities = armv7;
@@ -502,7 +500,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = tec.mx.Nepp;
+				PRODUCT_BUNDLE_IDENTIFIER = tec.mx.Nep;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
