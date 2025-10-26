@@ -1,0 +1,424 @@
+{
+  "baseline": {
+    "Train": {
+      "auc_roc": 0.9353558384079563,
+      "pr_auc": 0.9475197102496637,
+      "brier_score": 0.10087802884084784,
+      "accuracy": 0.7743646776182989,
+      "precision": 0.9536575172904307,
+      "recall": 0.9536575172904307,
+      "n_samples": 2761354,
+      "n_good": 1380677,
+      "n_bad": 1380677
+    },
+    "Validation": {
+      "auc_roc": 0.7236637977883138,
+      "pr_auc": 0.2323305414416913,
+      "brier_score": 0.12613071435895273,
+      "accuracy": 0.6172544971984665,
+      "precision": 0.7625980618366405,
+      "recall": 0.7625980618366405,
+      "n_samples": 339100,
+      "n_good": 43340,
+      "n_bad": 295760
+    },
+    "Test": {
+      "auc_roc": 0.7236195994545933,
+      "pr_auc": 0.23024545391472662,
+      "brier_score": 0.12604506232222967,
+      "accuracy": 0.6154714966927257,
+      "precision": 0.7659193033922377,
+      "recall": 0.7659193033922377,
+      "n_samples": 339101,
+      "n_good": 42951,
+      "n_bad": 296150
+    },
+    "optimal_threshold": 0.25000000000000006
+  },
+  "experiments": {
+    "Exp1_25features_balanced": {
+      "description": "25 features, class_weight balanced",
+      "features_count": 24,
+      "removed_features": [
+        "creditworthiness_score",
+        "income_adequacy",
+        "spending_monthly",
+        "income_debt_interaction"
+      ],
+      "class_weight_strategy": "balanced",
+      "results": {
+        "Train": {
+          "auc_roc": 0.7576131312944863,
+          "pr_auc": 0.275565562281073,
+          "brier_score": 0.20714776472400329,
+          "accuracy": 0.7026105441693254,
+          "precision": 0.6591902472867833,
+          "recall": 0.6591902472867833,
+          "f1_score": 0.36114546355435795,
+          "n_samples": 1582467,
+          "n_good": 201790,
+          "n_bad": 1380677
+        },
+        "Validation": {
+          "auc_roc": 0.7533810821462019,
+          "pr_auc": 0.27237008766111004,
+          "brier_score": 0.2075071441148162,
+          "accuracy": 0.701076378649366,
+          "precision": 0.6533687125057683,
+          "recall": 0.6533687125057683,
+          "f1_score": 0.35844530661586466,
+          "n_samples": 339100,
+          "n_good": 43340,
+          "n_bad": 295760
+        },
+        "Test": {
+          "auc_roc": 0.7539302915584424,
+          "pr_auc": 0.2685962379725142,
+          "brier_score": 0.2078947773447978,
+          "accuracy": 0.7014016472968231,
+          "precision": 0.6554911410677283,
+          "recall": 0.6554911410677283,
+          "f1_score": 0.3573681638455729,
+          "n_samples": 339101,
+          "n_good": 42951,
+          "n_bad": 296150
+        },
+        "optimal_threshold": 0.6000000000000002
+      }
+    },
+    "Exp2_25features_real_ratio": {
+      "description": "25 features, ratio real (6.8)",
+      "features_count": 24,
+      "removed_features": [
+        "creditworthiness_score",
+        "income_adequacy",
+        "spending_monthly",
+        "income_debt_interaction"
+      ],
+      "class_weight_strategy": "real_ratio",
+      "results": {
+        "Train": {
+          "auc_roc": 0.7570630114589614,
+          "pr_auc": 0.27494169809091024,
+          "brier_score": 0.2065523229318976,
+          "accuracy": 0.7044033145714887,
+          "precision": 0.6542197333861935,
+          "recall": 0.6542197333861935,
+          "f1_score": 0.36079431321586986,
+          "n_samples": 1582467,
+          "n_good": 201790,
+          "n_bad": 1380677
+        },
+        "Validation": {
+          "auc_roc": 0.7532260099406483,
+          "pr_auc": 0.2723656610452319,
+          "brier_score": 0.20684154006049893,
+          "accuracy": 0.7027926865231495,
+          "precision": 0.6492616520535303,
+          "recall": 0.6492616520535303,
+          "f1_score": 0.35831937909474665,
+          "n_samples": 339100,
+          "n_good": 43340,
+          "n_bad": 295760
+        },
+        "Test": {
+          "auc_roc": 0.7537761100758139,
+          "pr_auc": 0.2685964362888714,
+          "brier_score": 0.20722426788226547,
+          "accuracy": 0.7031356439526867,
+          "precision": 0.6509743661381574,
+          "recall": 0.6509743661381574,
+          "f1_score": 0.3571177683971211,
+          "n_samples": 339101,
+          "n_good": 42951,
+          "n_bad": 296150
+        },
+        "optimal_threshold": 0.6000000000000002
+      }
+    },
+    "Exp3_20features_balanced": {
+      "description": "20 features, class_weight balanced",
+      "features_count": 20,
+      "removed_features": [
+        "age_income_interaction",
+        "income_monthly",
+        "financial_health_score",
+        "dti_health_score",
+        "creditworthiness_score",
+        "income_adequacy",
+        "spending_monthly",
+        "income_debt_interaction"
+      ],
+      "class_weight_strategy": "balanced",
+      "results": {
+        "Train": {
+          "auc_roc": 0.7557544147125098,
+          "pr_auc": 0.2726263168298085,
+          "brier_score": 0.2077608859735192,
+          "accuracy": 0.7008165099177424,
+          "precision": 0.6579612468407751,
+          "recall": 0.6579612468407751,
+          "f1_score": 0.3593292448591858,
+          "n_samples": 1582467,
+          "n_good": 201790,
+          "n_bad": 1380677
+        },
+        "Validation": {
+          "auc_roc": 0.7524737769349026,
+          "pr_auc": 0.2710969607509019,
+          "brier_score": 0.20796225065375498,
+          "accuracy": 0.6997139486877028,
+          "precision": 0.6537840332256576,
+          "recall": 0.6537840332256576,
+          "f1_score": 0.35754619961261097,
+          "n_samples": 339100,
+          "n_good": 43340,
+          "n_bad": 295760
+        },
+        "Test": {
+          "auc_roc": 0.7530382852907864,
+          "pr_auc": 0.26742423218720845,
+          "brier_score": 0.2083469858170524,
+          "accuracy": 0.7003488636129059,
+          "precision": 0.6564224348676398,
+          "recall": 0.6564224348676398,
+          "f1_score": 0.3568860759493671,
+          "n_samples": 339101,
+          "n_good": 42951,
+          "n_bad": 296150
+        },
+        "optimal_threshold": 0.6000000000000002
+      }
+    }
+  },
+  "correlation_analysis": {
+    "high_corr_pairs": [
+      {
+        "feature1": "payroll_streak",
+        "feature2": "payroll_variance",
+        "correlation": 0.9155667441949494
+      },
+      {
+        "feature1": "payroll_streak",
+        "feature2": "income_stability_score",
+        "correlation": 0.9315147741838211
+      },
+      {
+        "feature1": "payroll_streak",
+        "feature2": "income_trend_6m",
+        "correlation": 0.9526170173283317
+      },
+      {
+        "feature1": "payroll_streak",
+        "feature2": "income_volatility",
+        "correlation": 0.9155667441949494
+      },
+      {
+        "feature1": "payroll_streak",
+        "feature2": "payment_consistency",
+        "correlation": 1.0000000000000326
+      },
+      {
+        "feature1": "payroll_streak",
+        "feature2": "late_payment_risk",
+        "correlation": 0.9155667441949494
+      },
+      {
+        "feature1": "payroll_streak",
+        "feature2": "financial_health_score",
+        "correlation": 0.9941208882380741
+      },
+      {
+        "feature1": "payroll_streak",
+        "feature2": "creditworthiness_score",
+        "correlation": 0.9938479344768328
+      },
+      {
+        "feature1": "income_monthly",
+        "feature2": "spending_monthly",
+        "correlation": 0.9965739110370043
+      },
+      {
+        "feature1": "income_monthly",
+        "feature2": "age_income_interaction",
+        "correlation": 0.9934055711458942
+      },
+      {
+        "feature1": "payroll_variance",
+        "feature2": "income_stability_score",
+        "correlation": 0.9990241631845139
+      },
+      {
+        "feature1": "payroll_variance",
+        "feature2": "income_volatility",
+        "correlation": 1.0
+      },
+      {
+        "feature1": "payroll_variance",
+        "feature2": "payment_consistency",
+        "correlation": 0.9155667441949505
+      },
+      {
+        "feature1": "payroll_variance",
+        "feature2": "late_payment_risk",
+        "correlation": 1.0
+      },
+      {
+        "feature1": "payroll_variance",
+        "feature2": "financial_health_score",
+        "correlation": 0.9191076304807216
+      },
+      {
+        "feature1": "payroll_variance",
+        "feature2": "creditworthiness_score",
+        "correlation": 0.9125800473510794
+      },
+      {
+        "feature1": "dti",
+        "feature2": "dti_health_score",
+        "correlation": 1.000000000000001
+      },
+      {
+        "feature1": "utilization",
+        "feature2": "credit_utilization_health",
+        "correlation": 0.9999999999999982
+      },
+      {
+        "feature1": "utilization",
+        "feature2": "stability_utilization_interaction",
+        "correlation": 0.9972732111777035
+      },
+      {
+        "feature1": "spending_monthly",
+        "feature2": "age_income_interaction",
+        "correlation": 0.9891249395468372
+      },
+      {
+        "feature1": "spending_var_6m",
+        "feature2": "max_days_late",
+        "correlation": 0.9552878580583395
+      },
+      {
+        "feature1": "spending_var_6m",
+        "feature2": "on_time_rate",
+        "correlation": 0.9989200015555753
+      },
+      {
+        "feature1": "spending_var_6m",
+        "feature2": "spending_stability",
+        "correlation": 0.9894626048048342
+      },
+      {
+        "feature1": "max_days_late",
+        "feature2": "on_time_rate",
+        "correlation": 0.9544736639309036
+      },
+      {
+        "feature1": "max_days_late",
+        "feature2": "spending_stability",
+        "correlation": 0.9456417325980264
+      },
+      {
+        "feature1": "on_time_rate",
+        "feature2": "spending_stability",
+        "correlation": 0.9910629641556231
+      },
+      {
+        "feature1": "income_stability_score",
+        "feature2": "income_volatility",
+        "correlation": 0.9990241631845139
+      },
+      {
+        "feature1": "income_stability_score",
+        "feature2": "payment_consistency",
+        "correlation": 0.9315147741837967
+      },
+      {
+        "feature1": "income_stability_score",
+        "feature2": "late_payment_risk",
+        "correlation": 0.9990241631845138
+      },
+      {
+        "feature1": "income_stability_score",
+        "feature2": "financial_health_score",
+        "correlation": 0.9341350761483442
+      },
+      {
+        "feature1": "income_stability_score",
+        "feature2": "creditworthiness_score",
+        "correlation": 0.928178777642229
+      },
+      {
+        "feature1": "income_trend_6m",
+        "feature2": "payment_consistency",
+        "correlation": 0.9526170173281965
+      },
+      {
+        "feature1": "income_trend_6m",
+        "feature2": "financial_health_score",
+        "correlation": 0.9407077853699883
+      },
+      {
+        "feature1": "income_trend_6m",
+        "feature2": "creditworthiness_score",
+        "correlation": 0.9452183385469658
+      },
+      {
+        "feature1": "income_volatility",
+        "feature2": "payment_consistency",
+        "correlation": 0.9155667441949505
+      },
+      {
+        "feature1": "income_volatility",
+        "feature2": "late_payment_risk",
+        "correlation": 1.0
+      },
+      {
+        "feature1": "income_volatility",
+        "feature2": "financial_health_score",
+        "correlation": 0.9191076304807216
+      },
+      {
+        "feature1": "income_volatility",
+        "feature2": "creditworthiness_score",
+        "correlation": 0.9125800473510794
+      },
+      {
+        "feature1": "credit_utilization_health",
+        "feature2": "stability_utilization_interaction",
+        "correlation": 0.9972732111777065
+      },
+      {
+        "feature1": "payment_consistency",
+        "feature2": "late_payment_risk",
+        "correlation": 0.9155667441949504
+      },
+      {
+        "feature1": "payment_consistency",
+        "feature2": "financial_health_score",
+        "correlation": 0.9941208882380902
+      },
+      {
+        "feature1": "payment_consistency",
+        "feature2": "creditworthiness_score",
+        "correlation": 0.9938479344767913
+      },
+      {
+        "feature1": "late_payment_risk",
+        "feature2": "financial_health_score",
+        "correlation": 0.919107630480722
+      },
+      {
+        "feature1": "late_payment_risk",
+        "feature2": "creditworthiness_score",
+        "correlation": 0.9125800473510792
+      },
+      {
+        "feature1": "financial_health_score",
+        "feature2": "creditworthiness_score",
+        "correlation": 0.9985704892095695
+      }
+    ],
+    "numeric_features_count": 32
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "raw_brier": 0.17764343466290178,
+  "isotonic_brier": null,
+  "sigmoid_brier": null,
+  "best_method": "raw",
+  "best_brier": 0.17764343466290178
+}
