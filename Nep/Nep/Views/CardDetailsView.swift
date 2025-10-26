@@ -28,8 +28,14 @@ struct CardDetailsView: View {
                         // Card action buttons
                         CardActionButtonsView(showCardInfo: $showCardInfo)
                         
-                        // Credit Limit
-                        CreditLimitView(limit: balance, cardType: card?.type ?? "Credit")
+                        // Show different content based on card type
+                        if card?.type.lowercased() == "credit" {
+                            // Credit card specific content
+                            CreditCardDetailsSection(card: card)
+                        } else {
+                            // Debit card content
+                            CreditLimitView(limit: balance, cardType: card?.type ?? "Debit")
+                        }
                         
                         // Card info and security grouped together (hidden by default)
                         if showCardInfo {
@@ -698,6 +704,185 @@ struct CardInfoRow: View {
         .padding(.vertical, 12)
         .background(Color.nepCardBackground.opacity(0.1))
         .cornerRadius(12)
+    }
+}
+
+// MARK: - Credit Card Details Section
+struct CreditCardDetailsSection: View {
+    @StateObject private var creditService = CreditService.shared
+    @StateObject private var userManager = UserManager.shared
+    @State private var creditOffer: CreditOffer?
+    @State private var isLoading = false
+    
+    let card: Card?
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            if isLoading {
+                ProgressView("Loading credit data...")
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 20)
+            } else if let offer = creditOffer {
+                // Credit Limit
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Credit Information")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.nepTextLight)
+                    
+                    VStack(spacing: 16) {
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text("Credit Limit")
+                                    .font(.caption)
+                                    .foregroundColor(.nepTextSecondary)
+                                Text("$\(Int(offer.creditLimit))")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.nepTextLight)
+                            }
+                            
+                            Spacer()
+                            
+                            VStack(alignment: .trailing) {
+                                Text("Available")
+                                    .font(.caption)
+                                    .foregroundColor(.nepTextSecondary)
+                                Text("$\(Int(offer.creditLimit * 0.7))")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.nepAccent)
+                            }
+                        }
+                        
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text("APR")
+                                    .font(.caption)
+                                    .foregroundColor(.nepTextSecondary)
+                                Text("\(Int(offer.apr * 100))%")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.nepTextLight)
+                            }
+                            
+                            Spacer()
+                            
+                            VStack(alignment: .trailing) {
+                                Text("Risk Tier")
+                                    .font(.caption)
+                                    .foregroundColor(.nepTextSecondary)
+                                Text(offer.riskTier)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(riskTierColor(offer.riskTier))
+                            }
+                        }
+                    }
+                    .padding()
+                    .background(Color.nepCardBackground.opacity(0.1))
+                    .cornerRadius(12)
+                }
+                
+                // MSI Information
+                if offer.msiEligible {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Special Offers")
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.nepTextLight)
+                        
+                        HStack {
+                            Image(systemName: "gift.fill")
+                                .foregroundColor(.nepAccent)
+                                .frame(width: 20)
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Meses Sin Intereses")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.nepTextLight)
+                                
+                                Text("Eligible for \(offer.msiMonths) months without interest")
+                                    .font(.caption)
+                                    .foregroundColor(.nepTextSecondary)
+                            }
+                            
+                            Spacer()
+                            
+                            Text("\(offer.msiMonths) MSI")
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .foregroundColor(.nepAccent)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.nepAccent.opacity(0.2))
+                                .cornerRadius(8)
+                        }
+                        .padding()
+                        .background(Color.nepAccent.opacity(0.1))
+                        .cornerRadius(12)
+                    }
+                }
+            } else {
+                VStack(spacing: 12) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 30))
+                        .foregroundColor(.nepWarning)
+                    
+                    Text("Credit data unavailable")
+                        .font(.subheadline)
+                        .foregroundColor(.nepTextSecondary)
+                    
+                    Button("Refresh") {
+                        loadCreditData()
+                    }
+                    .buttonStyle(.bordered)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
+                .background(Color.nepCardBackground.opacity(0.1))
+                .cornerRadius(12)
+            }
+        }
+        .onAppear {
+            loadCreditData()
+        }
+    }
+    
+    private func loadCreditData() {
+        isLoading = true
+        
+        Task {
+            do {
+                guard let user = userManager.currentUser else { return }
+                let offer = try await creditService.scoreCredit(for: user)
+                
+                DispatchQueue.main.async {
+                    self.creditOffer = offer
+                    self.isLoading = false
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    self.isLoading = false
+                }
+            }
+        }
+    }
+    
+    private func riskTierColor(_ riskTier: String) -> Color {
+        switch riskTier.lowercased() {
+        case "prime":
+            return .green
+        case "near prime":
+            return .blue
+        case "subprime":
+            return .orange
+        case "high risk":
+            return .red
+        default:
+            return .gray
+        }
     }
 }
 

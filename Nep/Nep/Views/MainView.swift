@@ -126,7 +126,7 @@ struct QuickActionsGrid: View {
                                 .foregroundColor(.nepWarning)
                         }
                         
-                        Text("Credit Score")
+                        Text("Credit Report")
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(.nepTextLight)
                             .multilineTextAlignment(.center)
@@ -398,6 +398,18 @@ struct MainView: View {
                     Task {
                         await quantumBridge.loadMockData()
                     }
+                    
+                    // Test Supabase connection
+                    Task {
+                        print("🔍 MainView: Testing Supabase connection on app launch...")
+                        let supabaseService = SupabaseService.shared
+                        do {
+                            let connected = try await supabaseService.testConnection()
+                            print("✅ MainView: Supabase connection test result: \(connected)")
+                        } catch {
+                            print("❌ MainView: Supabase connection failed: \(error.localizedDescription)")
+                        }
+                    }
                 }
                 .fullScreenCover(isPresented: $showCardDetails) {
                     CardDetailsView()
@@ -413,6 +425,9 @@ struct MainView: View {
                 }
                 .fullScreenCover(isPresented: $showTransactions) {
                     AllTransactionsView(transactions: viewModel.getRecentTransactions())
+                }
+                .fullScreenCover(isPresented: $showCreditScore) {
+                    CreditReportView()
                 }
             }
         }
@@ -748,6 +763,11 @@ struct ProfileView: View {
                     ProfileOptionButton(
                         title: "Privacy Settings",
                         icon: "eye.slash"
+                    )
+                    
+                    ProfileOptionButton(
+                        title: "Credit Settings",
+                        icon: "creditcard"
                     )
                     
                     ProfileOptionButton(
