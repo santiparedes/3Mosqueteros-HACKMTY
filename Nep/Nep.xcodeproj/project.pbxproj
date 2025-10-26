@@ -267,10 +267,11 @@
 				CODE_SIGN_ENTITLEMENTS = NepWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = T4U3LQTNHW;
+				DEVELOPMENT_TEAM = ZU3Y948C42;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = NepWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = NepWidget;
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "This widget uses Face ID to securely authenticate Tap-to-Send transactions.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -278,7 +279,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = tec.mx.Nep.NepWidget;
+				PRODUCT_BUNDLE_IDENTIFIER = tec.mx.Neppp.NepWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -295,10 +296,11 @@
 				CODE_SIGN_ENTITLEMENTS = NepWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = T4U3LQTNHW;
+				DEVELOPMENT_TEAM = ZU3Y948C42;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = NepWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = NepWidget;
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "This widget uses Face ID to securely authenticate Tap-to-Send transactions.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -306,7 +308,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = tec.mx.Nep.NepWidget;
+				PRODUCT_BUNDLE_IDENTIFIER = tec.mx.Neppp.NepWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -444,7 +446,7 @@
 				CODE_SIGN_ENTITLEMENTS = Nep/Nep.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = T4U3LQTNHW;
+				DEVELOPMENT_TEAM = ZU3Y948C42;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Nep/Info.plist;
@@ -454,6 +456,8 @@
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "This app uses Face ID to securely authenticate Tap-to-Send transactions.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "This app uses local network for secure peer-to-peer money transfers.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "This app uses location services to find nearby ATMs and bank branches.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "We need microphone access for voice guidance and to process your responses during onboarding.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "We use speech recognition to understand your voice commands and responses during onboarding.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIRequiredDeviceCapabilities = armv7;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -464,7 +468,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = tec.mx.Nep;
+				PRODUCT_BUNDLE_IDENTIFIER = tec.mx.Neppp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -480,7 +484,7 @@
 				CODE_SIGN_ENTITLEMENTS = Nep/Nep.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = T4U3LQTNHW;
+				DEVELOPMENT_TEAM = ZU3Y948C42;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Nep/Info.plist;
@@ -490,6 +494,8 @@
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "This app uses Face ID to securely authenticate Tap-to-Send transactions.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "This app uses local network for secure peer-to-peer money transfers.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "This app uses location services to find nearby ATMs and bank branches.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "We need microphone access for voice guidance and to process your responses during onboarding.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "We use speech recognition to understand your voice commands and responses during onboarding.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIRequiredDeviceCapabilities = armv7;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -500,7 +506,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = tec.mx.Nep;
+				PRODUCT_BUNDLE_IDENTIFIER = tec.mx.Neppp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;

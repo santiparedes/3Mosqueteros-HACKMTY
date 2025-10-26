@@ -49,11 +49,9 @@ struct AIChatView: View {
             .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isTyping)
             
             VStack(spacing: 0) {
-                Spacer()
-                
-                // Main content area
-                VStack(spacing: 32) {
-                    // Text input field (when in keyboard mode) - MOVED TO TOP
+                // Top section with text input and AI response
+                VStack(spacing: 20) {
+                    // Text input field (when in keyboard mode)
                     if !isListening {
                         TextField("Escribe tu respuesta...", text: $currentMessage, axis: .vertical)
                             .font(.system(size: 24, weight: .bold))
@@ -80,8 +78,6 @@ struct AIChatView: View {
                                 sendMessage()
                             }
                     }
-
-                    Spacer()
                     
                     // AI response area with gradient text
                     if isTyping {
@@ -126,15 +122,8 @@ struct AIChatView: View {
                                 )
                             )
                     }
-                    
-                    // Data confirmation card
-                    if showDataCard {
-                        dataConfirmationCard
-                    }
-
-                    Spacer()
-                    Spacer()
                 }
+                .padding(.top, 40) // Fixed top padding for text input and AI response
                 
                 Spacer()
                 
@@ -144,6 +133,20 @@ struct AIChatView: View {
         }
         .onAppear {
             startConversation()
+        }
+        .fullScreenCover(isPresented: $showPhotoCapture) {
+            PhotoCaptureView { photo in
+                print("DEBUG: Photo captured in AIChatView, showing welcome screen")
+                print("DEBUG: showPhotoCapture = \(showPhotoCapture)")
+                print("DEBUG: showWelcomeScreen = \(showWelcomeScreen)")
+                userPhoto = photo
+                showPhotoCapture = false
+                showWelcomeScreen = true
+                print("DEBUG: After setting - showPhotoCapture = \(showPhotoCapture), showWelcomeScreen = \(showWelcomeScreen)")
+            }
+        }
+        .sheet(isPresented: $showDataCard) {
+            dataConfirmationSheet
         }
         .fullScreenCover(isPresented: $showPhotoCapture) {
             PhotoCaptureView { photo in
@@ -333,90 +336,133 @@ struct AIChatView: View {
         }
     }
     
-    private var dataConfirmationCard: some View {
-        VStack(spacing: 16) {
-            HStack {
-                Text("Datos extraídos de tu INE")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(.white)
+    private var dataConfirmationSheet: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                // Drag indicator
+                RoundedRectangle(cornerRadius: 2.5)
+                    .fill(Color.gray.opacity(0.4))
+                    .frame(width: 40, height: 5)
+                    .padding(.top, 8)
+                    .padding(.bottom, 16)
+                
+                // Header
+                HStack {
+                    Text("Datos extraídos de tu INE")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundColor(.white)
+                    
+                    
+                    Spacer()
+                    
+                    Button(action: {
+                        showDataCard = false
+                    }) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.secondary)
+                            .frame(width: 28, height: 28)
+                            .background(Color.gray.opacity(0.3))
+                            .cornerRadius(14)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 20)
+                
+                // Scrollable data section
+                ScrollView {
+                    VStack(spacing: 20) {
+                        // Main data fields - only the 4 requested fields
+                        VStack(spacing: 16) {
+                            DataRow(title: "Nombre Completo", value: currentOCRResults.fullName)
+                            DataRow(title: "CURP", value: currentOCRResults.curp)
+                            DataRow(title: "Fecha de Nacimiento", value: currentOCRResults.dateOfBirth)
+                            DataRow(title: "Estado", value: currentOCRResults.state)
+                        }
+                        .padding(16)
+                        .background(Color.gray.opacity(0.1))
+                        .cornerRadius(16)
+                        
+                        // Additional data section
+                        VStack(spacing: 12) {
+                            HStack {
+                                Text("Datos adicionales")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundColor(.white)
+                                
+                                
+                                Spacer()
+                            }
+                            
+                            VStack(spacing: 12) {
+                                DataRow(title: "Número de Documento", value: currentOCRResults.documentNumber)
+                                DataRow(title: "Sexo", value: currentOCRResults.sex)
+                                DataRow(title: "Nacionalidad", value: currentOCRResults.nationality)
+                                DataRow(title: "Localidad", value: currentOCRResults.address)
+                                DataRow(title: "Municipio", value: currentOCRResults.municipality)
+                                DataRow(title: "Dirección", value: currentOCRResults.locality)
+                                DataRow(title: "Sección Electoral", value: currentOCRResults.electoralSection)
+                                DataRow(title: "Fecha de Expedición", value: currentOCRResults.issueDate)
+                                DataRow(title: "Fecha de Vencimiento", value: currentOCRResults.expirationDate)
+                            }
+                            .padding(16)
+                            .background(Color.gray.opacity(0.1))
+                            .cornerRadius(12)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                }
                 
                 Spacer()
                 
-                Button(action: {
-                    withAnimation(.easeInOut(duration: 0.3)) {
+                // Action buttons
+                HStack(spacing: 16) {
+                    Button(action: {
+                        // User says data is wrong
+                        print("DEBUG: 'Hay errores' button tapped")
+                        currentMessage = "No, hay errores en los datos"
                         showDataCard = false
-                    }
-                }) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.7))
-                }
-            }
-            
-            VStack(spacing: 12) {
-                DataRow(title: "Nombre", value: currentOCRResults.fullName)
-                DataRow(title: "CURP", value: currentOCRResults.curp)
-                DataRow(title: "Fecha de Nacimiento", value: currentOCRResults.dateOfBirth)
-                DataRow(title: "Estado", value: currentOCRResults.state)
-            }
-            .padding(16)
-            .background(Color.white.opacity(0.1))
-            .cornerRadius(12)
-            
-            HStack(spacing: 12) {
-                Button(action: {
-                    // User says data is wrong
-                    print("DEBUG: 'Hay errores' button tapped")
-                    currentMessage = "No, hay errores en los datos"
-                    showDataCard = false
-                    isCorrectingData = true
-                    
-                    // Auto-send after a brief delay
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        isCorrectingData = true
+                        
+                        // Send message immediately
                         sendMessage()
+                    }) {
+                        Text("Hay errores")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(Color.red)
+                            .cornerRadius(12)
                     }
-                }) {
-                    Text("Hay errores")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(Color.red.opacity(0.8))
-                        .cornerRadius(8)
-                }
-                
-                Button(action: {
-                    // User confirms data is correct
-                    print("DEBUG: 'Está correcto' button tapped")
-                    currentMessage = "Sí, los datos están correctos"
-                    showDataCard = false
                     
-                    // Auto-send after a brief delay
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    Button(action: {
+                        // User confirms data is correct
+                        print("DEBUG: 'Está correcto' button tapped")
+                        currentMessage = "Sí, los datos están correctos"
+                        showDataCard = false
+                        
+                        // Send message immediately
                         sendMessage()
+                    }) {
+                        Text("Está correcto")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(Color.green)
+                            .cornerRadius(12)
                     }
-                }) {
-                    Text("Está correcto")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(Color.green.opacity(0.8))
-                        .cornerRadius(8)
                 }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 34) // Safe area padding
             }
+            .navigationBarHidden(true)
         }
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.black.opacity(0.8))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.nepBlue.opacity(0.3), lineWidth: 1)
-                )
-        )
-        .padding(.horizontal, 20)
-        .padding(.bottom, 16)
+        .presentationDetents([.height(200), .medium, .large])
+        .presentationDragIndicator(.visible)
+        .presentationBackgroundInteraction(.disabled)
+        .interactiveDismissDisabled()
     }
     
     private var inputArea: some View {
@@ -493,9 +539,7 @@ struct AIChatView: View {
         messages.append(welcomeMessage)
         
         // Show data card immediately
-        withAnimation(.easeInOut(duration: 0.3)) {
-            showDataCard = true
-        }
+        showDataCard = true
     }
     
     private func addUserMessage(_ text: String) {
@@ -833,17 +877,19 @@ struct DataRow: View {
     let value: String
     
     var body: some View {
-        HStack {
+        VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.white.opacity(0.8))
+                .foregroundColor(.secondary)
             
-            Spacer()
-            
-            Text(value)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(.white)
+            Text(value.isEmpty ? "No disponible" : value)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(value.isEmpty ? .secondary : .primary)
+                .multilineTextAlignment(.leading)
+                .lineLimit(nil)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 4)
     }
 }
 
