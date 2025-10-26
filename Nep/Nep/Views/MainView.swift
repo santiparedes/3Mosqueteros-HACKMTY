@@ -3,6 +3,7 @@ import SwiftUI
 // MARK: - Main Header View
 struct MainHeaderView: View {
     @ObservedObject var userManager: UserManager
+    @ObservedObject var viewModel: BankingViewModel
     @Binding var showUserSelection: Bool
     
     var body: some View {
@@ -12,7 +13,7 @@ struct MainHeaderView: View {
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.nepTextSecondary)
                 
-                if let user = userManager.currentUser {
+                if let user = viewModel.user {
                     Text(user.firstName)
                         .font(.system(size: 24, weight: .bold))
                         .foregroundColor(.nepTextLight)
@@ -30,7 +31,7 @@ struct MainHeaderView: View {
                         .fill(Color.nepBlue)
                         .frame(width: 44, height: 44)
                     
-                    if let user = userManager.currentUser {
+                    if let user = viewModel.user {
                         Text(user.firstName.prefix(1))
                             .font(.system(size: 18, weight: .bold))
                             .foregroundColor(.white)
@@ -353,7 +354,7 @@ struct MainView: View {
                     ScrollView {
                         VStack(spacing: 24) {
                             // Header with User Info
-                            MainHeaderView(userManager: userManager, showUserSelection: $showUserSelection)
+                            MainHeaderView(userManager: userManager, viewModel: viewModel, showUserSelection: $showUserSelection)
                             
                             // Total Balance Card
                             TotalBalanceCard(balance: getTotalBalance(), isVisible: $isBalanceVisible)
@@ -394,7 +395,6 @@ struct MainView: View {
                     }
                 }
                 .onAppear {
-                    viewModel.loadMockData()
                     Task {
                         await quantumBridge.loadMockData()
                     }
@@ -715,6 +715,8 @@ struct DebugActionButton: View {
 
 
 struct ProfileView: View {
+    @ObservedObject var viewModel: BankingViewModel
+    
     var body: some View {
         ZStack {
             Color.nepDarkBackground
@@ -733,13 +735,19 @@ struct ProfileView: View {
                             .foregroundColor(.white)
                     }
                     
-                    Text("John Doe")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.nepTextLight)
-                    
-                    Text("john.doe@example.com")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.nepTextSecondary)
+                    if let user = viewModel.user {
+                        Text("\(user.firstName) \(user.lastName)")
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundColor(.nepTextLight)
+                        
+                        Text(user.email)
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.nepTextSecondary)
+                    } else {
+                        Text("Loading...")
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundColor(.nepTextLight)
+                    }
                 }
                 .padding(.top, 50)
                 

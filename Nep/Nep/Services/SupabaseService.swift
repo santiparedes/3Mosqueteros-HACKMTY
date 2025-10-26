@@ -212,7 +212,7 @@ class SupabaseService: ObservableObject {
         defer { isLoading = false }
         
         do {
-            let response: [Transaction] = try await client
+            let dbTransactions: [DatabaseTransaction] = try await client
                 .from("transactions")
                 .select()
                 .eq("account_id", value: accountId)
@@ -220,7 +220,9 @@ class SupabaseService: ObservableObject {
                 .execute()
                 .value
             
-            return response
+            // Map DatabaseTransaction to Transaction
+            let transactions = dbTransactions.map { DatabaseMappingService.mapToTransaction(from: $0) }
+            return transactions
         } catch {
             errorMessage = "Failed to get transactions: \(error.localizedDescription)"
             throw error
