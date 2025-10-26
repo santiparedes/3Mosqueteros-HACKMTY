@@ -49,7 +49,7 @@ struct ConsentView: View {
                     
                     // Next Steps Instructions
                     VStack(spacing: 16) {
-                        Text("📋 Próximos pasos")
+                        Text("Próximos pasos")
                             .font(.system(size: 20, weight: .semibold))
                             .foregroundColor(.white)
                         

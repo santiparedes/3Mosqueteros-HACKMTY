@@ -135,8 +135,14 @@ class CameraManager: NSObject, ObservableObject {
                 self.captureSession.startRunning()
             }
             
+            // Capture session state on background thread
+            let sessionIsRunning = self.captureSession.isRunning
+            
             // Update session state on main thread
-            self.updateSessionState()
+            DispatchQueue.main.async {
+                self.isSessionRunning = sessionIsRunning
+                print("DEBUG: Camera session state updated: \(self.isSessionRunning)")
+            }
         }
     }
     
@@ -146,8 +152,14 @@ class CameraManager: NSObject, ObservableObject {
         DispatchQueue.global(qos: .userInitiated).async {
             self.captureSession.stopRunning()
             
+            // Capture session state on background thread
+            let sessionIsRunning = self.captureSession.isRunning
+            
             // Update session state on main thread
-            self.updateSessionState()
+            DispatchQueue.main.async {
+                self.isSessionRunning = sessionIsRunning
+                print("DEBUG: Camera session state updated: \(self.isSessionRunning)")
+            }
         }
     }
     
@@ -277,12 +289,3 @@ extension CameraManager: AVCaptureVideoDataOutputSampleBufferDelegate {
     }
 }
 
-// MARK: - Session State Management
-extension CameraManager {
-    private func updateSessionState() {
-        DispatchQueue.main.async {
-            self.isSessionRunning = self.captureSession.isRunning
-            print("DEBUG: Camera session state updated: \(self.isSessionRunning)")
-        }
-    }
-}

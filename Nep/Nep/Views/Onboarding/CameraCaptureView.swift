@@ -267,8 +267,18 @@ struct CameraCaptureView: View {
         }
         .fullScreenCover(isPresented: $showOCRResults) {
             if let results = ocrResults {
-                OCRResultsView(
-                    results: results,
+                AIChatView(
+                    ocrResults: results,
+                    onDataConfirmed: { confirmedResults in
+                        // Data has been confirmed by user
+                        print("DEBUG: Data confirmed by user")
+                    },
+                    onPhotoCaptured: { photo in
+                        // User photo has been captured
+                        print("DEBUG: User photo captured")
+                        // Photo captured, but let AIChatView handle the welcome screen flow
+                        // Don't complete onboarding here - let AIChatView show the welcome screen
+                    },
                     onComplete: {
                         showOCRResults = false
                         isOnboardingComplete = true

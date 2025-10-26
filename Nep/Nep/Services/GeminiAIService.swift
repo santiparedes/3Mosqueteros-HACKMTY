@@ -92,6 +92,25 @@ class GeminiAIService: ObservableObject {
         }
     }
     
+    // MARK: - Data Correction Processing
+    func processDataCorrection(_ userInput: String, currentData: OCRResults) async -> DataCorrectionResponse {
+        print("🤖 GEMINI: Processing data correction request...")
+        
+        let prompt = createDataCorrectionPrompt(userInput: userInput, currentData: currentData)
+        
+        do {
+            let response = try await sendGeminiRequest(prompt: prompt)
+            return parseDataCorrectionResponse(response, currentData: currentData)
+        } catch {
+            print("❌ GEMINI: Error processing data correction: \(error)")
+            return DataCorrectionResponse(
+                message: "No pude procesar la corrección. ¿Podrías ser más específico sobre qué datos están incorrectos?",
+                correctedData: currentData,
+                hasChanges: false
+            )
+        }
+    }
+    
     // MARK: - Private Methods
     private func sendGeminiRequest(prompt: String) async throws -> String {
         guard let url = URL(string: "\(baseURL)?key=\(apiKey)") else {
@@ -230,6 +249,54 @@ class GeminiAIService: ObservableObject {
         """
     }
     
+    private func createDataCorrectionPrompt(userInput: String, currentData: OCRResults) -> String {
+        return """
+        Eres un asistente virtual de NEP especializado en corrección de datos de documentos INE.
+        
+        Datos actuales extraídos del INE:
+        - Nombre completo: \(currentData.fullName)
+        - CURP: \(currentData.curp)
+        - Fecha de Nacimiento: \(currentData.dateOfBirth)
+        - Número de Documento: \(currentData.documentNumber)
+        - Sexo: \(currentData.sex)
+        - Sección Electoral: \(currentData.electoralSection)
+        - Localidad: \(currentData.locality)
+        - Municipio: \(currentData.municipality)
+        - Estado: \(currentData.state)
+        - Fecha de Emisión: \(currentData.issueDate)
+        - Fecha de Vencimiento: \(currentData.expirationDate)
+        - Dirección: \(currentData.address)
+        
+        El usuario dice: "\(userInput)"
+        
+        Analiza qué datos están incorrectos según el usuario y proporciona los datos corregidos.
+        
+        Responde en formato JSON:
+        {
+            "message": "mensaje de confirmación de la corrección",
+            "correctedData": {
+                "firstName": "nuevo nombre",
+                "lastName": "nuevo apellido",
+                "middleName": "nuevo segundo nombre",
+                "dateOfBirth": "nueva fecha",
+                "documentNumber": "nuevo número",
+                "curp": "nuevo curp",
+                "sex": "nuevo sexo",
+                "electoralSection": "nueva sección",
+                "locality": "nueva localidad",
+                "municipality": "nuevo municipio",
+                "state": "nuevo estado",
+                "issueDate": "nueva fecha emisión",
+                "expirationDate": "nueva fecha vencimiento",
+                "address": "nueva dirección"
+            },
+            "hasChanges": boolean
+        }
+        
+        Si no hay cambios específicos mencionados, mantén los datos originales y hasChanges = false.
+        """
+    }
+    
     private func parseINEAnalysis(_ response: String) -> INEAnalysis {
         // Parse JSON response from Gemini
         guard let data = response.data(using: .utf8),
@@ -269,6 +336,50 @@ class GeminiAIService: ObservableObject {
             message: json["message"] as? String ?? "Continuemos con el proceso.",
             nextAction: nextAction,
             requiresConfirmation: json["requiresConfirmation"] as? Bool ?? false
+        )
+    }
+    
+    private func parseDataCorrectionResponse(_ response: String, currentData: OCRResults) -> DataCorrectionResponse {
+        guard let data = response.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return DataCorrectionResponse(
+                message: "No pude procesar la corrección. ¿Podrías ser más específico?",
+                correctedData: currentData,
+                hasChanges: false
+            )
+        }
+        
+        let message = json["message"] as? String ?? "He procesado tu corrección."
+        let hasChanges = json["hasChanges"] as? Bool ?? false
+        
+        var correctedData = currentData
+        
+        if hasChanges, let correctedDataDict = json["correctedData"] as? [String: Any] {
+            correctedData = OCRResults(
+                firstName: correctedDataDict["firstName"] as? String ?? currentData.firstName,
+                lastName: correctedDataDict["lastName"] as? String ?? currentData.lastName,
+                middleName: correctedDataDict["middleName"] as? String ?? currentData.middleName,
+                dateOfBirth: correctedDataDict["dateOfBirth"] as? String ?? currentData.dateOfBirth,
+                documentNumber: correctedDataDict["documentNumber"] as? String ?? currentData.documentNumber,
+                nationality: currentData.nationality,
+                address: correctedDataDict["address"] as? String ?? currentData.address,
+                occupation: currentData.occupation,
+                incomeSource: currentData.incomeSource,
+                curp: correctedDataDict["curp"] as? String ?? currentData.curp,
+                sex: correctedDataDict["sex"] as? String ?? currentData.sex,
+                electoralSection: correctedDataDict["electoralSection"] as? String ?? currentData.electoralSection,
+                locality: correctedDataDict["locality"] as? String ?? currentData.locality,
+                municipality: correctedDataDict["municipality"] as? String ?? currentData.municipality,
+                state: correctedDataDict["state"] as? String ?? currentData.state,
+                expirationDate: correctedDataDict["expirationDate"] as? String ?? currentData.expirationDate,
+                issueDate: correctedDataDict["issueDate"] as? String ?? currentData.issueDate
+            )
+        }
+        
+        return DataCorrectionResponse(
+            message: message,
+            correctedData: correctedData,
+            hasChanges: hasChanges
         )
     }
     
@@ -331,6 +442,12 @@ struct ConversationResponse {
     let message: String
     let nextAction: ConversationAction
     let requiresConfirmation: Bool
+}
+
+struct DataCorrectionResponse {
+    let message: String
+    let correctedData: OCRResults
+    let hasChanges: Bool
 }
 
 enum ConversationAction: String {
