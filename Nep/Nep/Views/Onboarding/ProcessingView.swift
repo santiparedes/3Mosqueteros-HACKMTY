@@ -5,10 +5,10 @@ struct ProcessingView: View {
     @State private var currentStep = 0
     
     let steps = [
-        "Analizando documento...",
-        "Extrayendo información...",
-        "Verificando datos...",
-        "Procesando imagen..."
+        "Analyzing document...",
+        "Extracting information...",
+        "Verifying data...",
+        "Processing image..."
     ]
     
     var body: some View {
@@ -45,7 +45,7 @@ struct ProcessingView: View {
                 
                 // Processing steps
                 VStack(spacing: 20) {
-                    Text("Procesando tu documento")
+                    Text("Processing your document")
                         .font(.system(size: 24, weight: .bold))
                         .foregroundColor(.white)
                     
@@ -87,7 +87,7 @@ struct ProcessingView: View {
                         .progressViewStyle(LinearProgressViewStyle(tint: Color.nepBlue))
                         .scaleEffect(x: 1, y: 2, anchor: .center)
                     
-                    Text("\(Int((Double(currentStep) / Double(steps.count)) * 100))% completado")
+                    Text("\(Int((Double(currentStep) / Double(steps.count)) * 100))% completed")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.white.opacity(0.8))
                 }
@@ -125,7 +125,7 @@ struct ImagePreviewView: View {
             VStack(spacing: 30) {
                 // Header
                 HStack {
-                    Text("Vista previa - Frente")
+                    Text("Preview - Front")
                         .font(.system(size: 20, weight: .bold))
                         .foregroundColor(.white)
                     
@@ -146,7 +146,7 @@ struct ImagePreviewView: View {
                     Button(action: onRetake) {
                         HStack {
                             Image(systemName: "arrow.clockwise")
-                            Text("Tomar de nuevo")
+                            Text("Retake")
                         }
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.white)
@@ -159,7 +159,7 @@ struct ImagePreviewView: View {
                     Button(action: onContinue) {
                         HStack {
                             Image(systemName: "checkmark")
-                            Text("Continuar")
+                            Text("Continue")
                         }
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.white)

@@ -82,7 +82,7 @@ struct WelcomeCompletionView: View {
                     
                     // Welcome text
                     VStack(spacing: 16) {
-                        Text("¡Bienvenido a Nep!")
+                        Text("Welcome to Nep!")
                             .font(.system(size: 32, weight: .bold))
                             .foregroundColor(.white)
                             .multilineTextAlignment(.center)
@@ -90,7 +90,7 @@ struct WelcomeCompletionView: View {
                             .offset(y: showWelcomeText ? 0 : animationOffset)
                             .animation(.easeOut(duration: 0.8).delay(0.4), value: showWelcomeText)
                         
-                        Text("Hola, \(userName)")
+                        Text("Hello, \(userName)")
                             .font(.system(size: 24, weight: .semibold))
                             .foregroundColor(.nepBlue)
                             .multilineTextAlignment(.center)
@@ -98,7 +98,7 @@ struct WelcomeCompletionView: View {
                             .offset(y: showWelcomeText ? 0 : animationOffset)
                             .animation(.easeOut(duration: 0.8).delay(0.6), value: showWelcomeText)
                         
-                        Text("Tu cuenta bancaria digital está lista")
+                        Text("Your digital banking account is ready")
                             .font(.system(size: 18, weight: .medium))
                             .foregroundColor(.white.opacity(0.8))
                             .multilineTextAlignment(.center)
@@ -111,20 +111,20 @@ struct WelcomeCompletionView: View {
                     VStack(spacing: 16) {
                         WelcomeFeatureRow(
                             icon: "creditcard.fill",
-                            title: "Tarjeta Digital",
-                            description: "Acceso inmediato a tu tarjeta virtual"
+                            title: "Digital Card",
+                            description: "Immediate access to your virtual card"
                         )
                         
                         WelcomeFeatureRow(
                             icon: "wave.3.right",
-                            title: "Pagos Rápidos",
-                            description: "Envía dinero con solo un toque"
+                            title: "Quick Payments",
+                            description: "Send money with just a tap"
                         )
                         
                         WelcomeFeatureRow(
                             icon: "shield.fill",
-                            title: "Seguridad Cuántica",
-                            description: "Protección de nivel bancario"
+                            title: "Quantum Security",
+                            description: "Bank-level protection"
                         )
                     }
                     .opacity(showWelcomeText ? 1.0 : 0.0)
@@ -148,7 +148,7 @@ struct WelcomeCompletionView: View {
                             Image(systemName: "arrow.right.circle.fill")
                                 .font(.system(size: 20))
                             
-                            Text("Comenzar")
+                            Text("Get Started")
                                 .font(.system(size: 18, weight: .semibold))
                         }
                         .foregroundColor(.white)
@@ -170,7 +170,7 @@ struct WelcomeCompletionView: View {
                     Button(action: {
                         // Show app tour or help
                     }) {
-                        Text("Conoce más sobre Nep")
+                        Text("Learn more about Nep")
                             .font(.system(size: 16, weight: .medium))
                             .foregroundColor(.white.opacity(0.7))
                     }
@@ -298,7 +298,7 @@ struct WelcomeParticle: Identifiable {
 
 #Preview {
     WelcomeCompletionView(
-        userName: "Juan Pérez",
+        userName: "John Doe",
         userPhoto: nil,
         onComplete: { }
     )

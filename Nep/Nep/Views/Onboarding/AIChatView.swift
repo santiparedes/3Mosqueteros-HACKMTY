@@ -1,6 +1,5 @@
 import SwiftUI
 import AVFoundation
-import Speech
 
 struct AIChatView: View {
     @StateObject private var geminiService = GeminiAIService.shared
@@ -19,13 +18,7 @@ struct AIChatView: View {
     @State private var typingText = ""
     @State private var currentTypingMessage = ""
     @State private var isTextFieldFocused = false
-    @State private var hasVoicePermission = false
-    @State private var showVoicePermissionAlert = false
-    @State private var showTemporaryError = false
-    @State private var temporaryErrorMessage = ""
-    
-    // Voice recognition manager
-    @StateObject private var speechManager = SpeechRecognizerManager()
+    @State private var typingTask: Task<Void, Never>?
     
     let ocrResults: OCRResults
     let onDataConfirmed: (OCRResults) -> Void
@@ -57,13 +50,11 @@ struct AIChatView: View {
             .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isTyping)
             
             VStack(spacing: 0) {
-                Spacer()
-                
-                // Main content area
-                VStack(spacing: 32) {
-                    // Text input field (when in keyboard mode) - MOVED TO TOP
+                // Top section with text input and AI response
+                VStack(spacing: 20) {
+                    // Text input field (when in keyboard mode)
                     if !isListening {
-                        TextField("Escribe tu respuesta...", text: $currentMessage, axis: .vertical)
+                        TextField("Type your response...", text: $currentMessage, axis: .vertical)
                             .font(.system(size: 24, weight: .bold))
                             .foregroundStyle(
                                 LinearGradient(
@@ -88,8 +79,6 @@ struct AIChatView: View {
                                 sendMessage()
                             }
                     }
-
-                    Spacer()
                     
                     // AI response area with gradient text
                     if isTyping {
@@ -109,7 +98,7 @@ struct AIChatView: View {
                                 )
                         } else {
                             // Show thinking state
-                            Text("Pensando...")
+                            Text("Thinking...")
                                 .font(.system(size: 20, weight: .medium))
                                 .padding(.vertical, 12)
                                 .foregroundStyle(
@@ -134,45 +123,34 @@ struct AIChatView: View {
                                 )
                             )
                     }
-                    
-                    // Data confirmation card
-                    if showDataCard {
-                        dataConfirmationCard
-                    }
-
-                    Spacer()
-                    Spacer()
                 }
+                .padding(.top, 40) // Fixed top padding for text input and AI response
                 
                 Spacer()
                 
                 // Bottom control bar
                 bottomControlBar
             }
-            
-            // Temporary error message overlay
-            if showTemporaryError {
-                VStack {
-                    Spacer()
-                    Text(temporaryErrorMessage)
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 12)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color.red.opacity(0.9))
-                        )
-                        .padding(.bottom, 100)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-                .animation(.easeInOut(duration: 0.3), value: showTemporaryError)
-            }
         }
         .onAppear {
             startConversation()
-            setupSpeechManager()
-            checkVoicePermission()
+        }
+        .onDisappear {
+            typingTask?.cancel()
+        }
+        .fullScreenCover(isPresented: $showPhotoCapture) {
+            PhotoCaptureView { photo in
+                print("DEBUG: Photo captured in AIChatView, showing welcome screen")
+                print("DEBUG: showPhotoCapture = \(showPhotoCapture)")
+                print("DEBUG: showWelcomeScreen = \(showWelcomeScreen)")
+                userPhoto = photo
+                showPhotoCapture = false
+                showWelcomeScreen = true
+                print("DEBUG: After setting - showPhotoCapture = \(showPhotoCapture), showWelcomeScreen = \(showWelcomeScreen)")
+            }
+        }
+        .sheet(isPresented: $showDataCard) {
+            dataConfirmationSheet
         }
         .fullScreenCover(isPresented: $showPhotoCapture) {
             PhotoCaptureView { photo in
@@ -197,16 +175,6 @@ struct AIChatView: View {
                 }
             )
         }
-        .alert("Permiso de Voz", isPresented: $showVoicePermissionAlert) {
-            Button("Configuración") {
-                if let url = URL(string: UIApplication.openSettingsURLString) {
-                    UIApplication.shared.open(url)
-                }
-            }
-            Button("Cancelar", role: .cancel) {}
-        } message: {
-            Text("Se requiere permiso para usar el reconocimiento de voz. Por favor, habilítalo en la configuración.")
-        }
     }
     
     private var bottomControlBar: some View {
@@ -216,12 +184,8 @@ struct AIChatView: View {
                 Button(action: {
                     // Switch to voice mode
                     print("DEBUG: Voice mode button tapped")
-                    if hasVoicePermission {
-                        isListening = true
-                        startListening()
-                    } else {
-                        showVoicePermissionAlert = true
-                    }
+                    isListening = true
+                    startListening()
                 }) {
                     Image(systemName: "mic.fill")
                         .font(.system(size: 16, weight: .medium))
@@ -280,11 +244,7 @@ struct AIChatView: View {
                     sendMessage()
                 } else {
                     print("DEBUG: No message, starting to listen...")
-                    if hasVoicePermission {
-                        startListening()
-                    } else {
-                        showVoicePermissionAlert = true
-                    }
+                    startListening()
                 }
             }) {
                 ZStack {
@@ -315,7 +275,7 @@ struct AIChatView: View {
     private var headerView: some View {
         VStack(spacing: 16) {
             // Main query/title
-            Text("Verificando tu información")
+            Text("Verifying your information")
                 .font(.system(size: 28, weight: .bold))
                 .foregroundColor(.white)
                 .multilineTextAlignment(.center)
@@ -380,90 +340,133 @@ struct AIChatView: View {
         }
     }
     
-    private var dataConfirmationCard: some View {
-        VStack(spacing: 16) {
-            HStack {
-                Text("Datos extraídos de tu INE")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(.white)
+    private var dataConfirmationSheet: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                // Drag indicator
+                RoundedRectangle(cornerRadius: 2.5)
+                    .fill(Color.gray.opacity(0.4))
+                    .frame(width: 40, height: 5)
+                    .padding(.top, 8)
+                    .padding(.bottom, 16)
+                
+                // Header
+                HStack {
+                    Text("Data extracted from your ID")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundColor(.white)
+                    
+                    
+                    Spacer()
+                    
+                    Button(action: {
+                        showDataCard = false
+                    }) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.secondary)
+                            .frame(width: 28, height: 28)
+                            .background(Color.gray.opacity(0.3))
+                            .cornerRadius(14)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 20)
+                
+                // Scrollable data section
+                ScrollView {
+                    VStack(spacing: 20) {
+                        // Main data fields - only the 4 requested fields
+                        VStack(spacing: 16) {
+                            DataRow(title: "Nombre Completo", value: currentOCRResults.fullName)
+                            DataRow(title: "CURP", value: currentOCRResults.curp)
+                            DataRow(title: "Fecha de Nacimiento", value: currentOCRResults.dateOfBirth)
+                            DataRow(title: "Estado", value: currentOCRResults.state)
+                        }
+                        .padding(16)
+                        .background(Color.gray.opacity(0.1))
+                        .cornerRadius(16)
+                        
+                        // Additional data section
+                        VStack(spacing: 12) {
+                            HStack {
+                                Text("Datos adicionales")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundColor(.white)
+                                
+                                
+                                Spacer()
+                            }
+                            
+                            VStack(spacing: 12) {
+                                DataRow(title: "Document Number", value: currentOCRResults.documentNumber)
+                                DataRow(title: "Sex", value: currentOCRResults.sex)
+                                DataRow(title: "Nationality", value: currentOCRResults.nationality)
+                                DataRow(title: "Locality", value: currentOCRResults.address)
+                                DataRow(title: "Municipality", value: currentOCRResults.municipality)
+                                DataRow(title: "Address", value: currentOCRResults.locality)
+                                DataRow(title: "Electoral Section", value: currentOCRResults.electoralSection)
+                                DataRow(title: "Issue Date", value: currentOCRResults.issueDate)
+                                DataRow(title: "Expiration Date", value: currentOCRResults.expirationDate)
+                            }
+                            .padding(16)
+                            .background(Color.gray.opacity(0.1))
+                            .cornerRadius(12)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                }
                 
                 Spacer()
                 
-                Button(action: {
-                    withAnimation(.easeInOut(duration: 0.3)) {
+                // Action buttons
+                HStack(spacing: 16) {
+                    Button(action: {
+                        // User says data is wrong
+                        print("DEBUG: 'Has errors' button tapped")
+                        currentMessage = "No, there are errors in the data"
                         showDataCard = false
-                    }
-                }) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.7))
-                }
-            }
-            
-            VStack(spacing: 12) {
-                DataRow(title: "Nombre", value: currentOCRResults.fullName)
-                DataRow(title: "CURP", value: currentOCRResults.curp)
-                DataRow(title: "Fecha de Nacimiento", value: currentOCRResults.dateOfBirth)
-                DataRow(title: "Estado", value: currentOCRResults.state)
-            }
-            .padding(16)
-            .background(Color.white.opacity(0.1))
-            .cornerRadius(12)
-            
-            HStack(spacing: 12) {
-                Button(action: {
-                    // User says data is wrong
-                    print("DEBUG: 'Hay errores' button tapped")
-                    currentMessage = "No, hay errores en los datos"
-                    showDataCard = false
-                    isCorrectingData = true
-                    
-                    // Auto-send after a brief delay
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        isCorrectingData = true
+                        
+                        // Send message immediately
                         sendMessage()
+                    }) {
+                        Text("Has errors")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(Color.orange.opacity(0.8))
+                            .cornerRadius(12)
                     }
-                }) {
-                    Text("Hay errores")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(Color.red.opacity(0.8))
-                        .cornerRadius(8)
-                }
-                
-                Button(action: {
-                    // User confirms data is correct
-                    print("DEBUG: 'Está correcto' button tapped")
-                    currentMessage = "Sí, los datos están correctos"
-                    showDataCard = false
                     
-                    // Auto-send after a brief delay
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    Button(action: {
+                        // User confirms data is correct
+                        print("DEBUG: 'It's correct' button tapped")
+                        currentMessage = "Yes, the data is correct"
+                        showDataCard = false
+                        
+                        // Send message immediately
                         sendMessage()
+                    }) {
+                        Text("It's correct")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(Color.nepBlue.opacity(0.8))
+                            .cornerRadius(12)
                     }
-                }) {
-                    Text("Está correcto")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(Color.green.opacity(0.8))
-                        .cornerRadius(8)
                 }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 34) // Safe area padding
             }
+            .navigationBarHidden(true)
         }
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.black.opacity(0.8))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.nepBlue.opacity(0.3), lineWidth: 1)
-                )
-        )
-        .padding(.horizontal, 20)
-        .padding(.bottom, 16)
+        .presentationDetents([.height(200), .medium, .large])
+        .presentationDragIndicator(.visible)
+        .presentationBackgroundInteraction(.disabled)
+        .interactiveDismissDisabled()
     }
     
     private var inputArea: some View {
@@ -533,16 +536,14 @@ struct AIChatView: View {
         // Add initial AI message
         let welcomeMessage = ChatMessage(
             id: UUID(),
-            text: "¡Hola! Soy tu asistente de Nep. He extraído la información de tu INE y quiero verificar que todo esté correcto contigo.",
+            text: "Hello! I'm your Nep assistant. I've extracted the information from your ID and want to verify that everything is correct with you.",
             isUser: false,
             timestamp: Date()
         )
         messages.append(welcomeMessage)
         
         // Show data card immediately
-        withAnimation(.easeInOut(duration: 0.3)) {
-            showDataCard = true
-        }
+        showDataCard = true
     }
     
     private func addUserMessage(_ text: String) {
@@ -557,6 +558,9 @@ struct AIChatView: View {
     }
     
     private func addAIMessage(_ text: String) {
+        // Cancel any existing typing animation
+        typingTask?.cancel()
+        
         isTyping = true
         currentTypingMessage = text
         typingText = ""
@@ -569,19 +573,38 @@ struct AIChatView: View {
         let characters = Array(text)
         var currentIndex = 0
         
-        func typeNextCharacter() {
-            if currentIndex < characters.count {
-                typingText += String(characters[currentIndex])
-                currentIndex += 1
+        typingTask = Task {
+            for (index, character) in characters.enumerated() {
+                // Check if task was cancelled
+                if Task.isCancelled {
+                    return
+                }
+                
+                // Check if this is still the current message being typed
+                if currentTypingMessage != text {
+                    return
+                }
+                
+                await MainActor.run {
+                    typingText += String(character)
+                }
                 
                 // Type at different speeds for different characters
-                let delay = characters[currentIndex - 1] == " " ? 0.1 : 0.05
-                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                    typeNextCharacter()
-                }
-            } else {
-                // Typing complete, add to messages after a pause
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                let delay = character == " " ? 0.1 : 0.05
+                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            }
+            
+            // Check if task was cancelled before completing
+            if Task.isCancelled || currentTypingMessage != text {
+                return
+            }
+            
+            // Typing complete, add to messages after a pause
+            try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+            
+            await MainActor.run {
+                // Double-check this is still the current message
+                if currentTypingMessage == text {
                     let message = ChatMessage(
                         id: UUID(),
                         text: text,
@@ -595,12 +618,10 @@ struct AIChatView: View {
                 }
             }
         }
-        
-        typeNextCharacter()
     }
     
     private func processDataConfirmation() {
-        addAIMessage("¡Perfecto! Los datos están correctos. Ahora necesito una foto tuya para completar tu perfil.")
+        addAIMessage("Perfect! The data is correct. Now I need a photo of you to complete your profile.")
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
             showPhotoCapture = true
@@ -608,28 +629,35 @@ struct AIChatView: View {
     }
     
     private func processUserCorrection() {
-        addAIMessage("Entiendo, hay errores en los datos. Por favor, dime qué información está incorrecta y cómo debería ser.")
+        addAIMessage("I understand, there are errors in the data. Please tell me what information is incorrect and how it should be.")
     }
     
     private func startListening() {
-        print("🎙️ Iniciando grabación...")
-        currentMessage = ""
+        print("DEBUG: startListening() called")
         isListening = true
+        print("DEBUG: isListening set to true")
         
-        do {
-            try speechManager.startRecognition()
-        } catch {
-            print("❌ Error starting voice recognition: \(error.localizedDescription)")
+        // TODO: Implement real voice recognition
+        // For now, simulate voice input after 3 seconds for testing
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            print("DEBUG: Simulating voice input after 3 seconds")
             isListening = false
-            temporaryErrorMessage = "Error al iniciar el reconocimiento de voz"
-            showTemporaryError = true
+            print("DEBUG: isListening set to false")
+            
+            // Simulate what the user said - put it in the text input field
+            let simulatedVoiceInput = "The data is correct"
+            print("DEBUG: Simulated voice input: '\(simulatedVoiceInput)'")
+            currentMessage = simulatedVoiceInput
+            
+            // Add confirmation step before proceeding
+            addAIMessage("Are you sure the data is correct? Answer 'yes' to continue or 'no' to correct.")
         }
     }
     
     private func stopListening() {
-        print("⏹️ Deteniendo grabación...")
+        print("DEBUG: stopListening() called")
         isListening = false
-        speechManager.stopRecognition()
+        print("DEBUG: isListening set to false")
     }
     
     private func sendMessage() {
@@ -645,20 +673,20 @@ struct AIChatView: View {
         let lowercasedMessage = currentMessage.lowercased()
         print("DEBUG: Processing message: '\(lowercasedMessage)'")
         
-        if lowercasedMessage.contains("sí") || lowercasedMessage.contains("si") || lowercasedMessage.contains("yes") {
+        if lowercasedMessage.contains("yes") || lowercasedMessage.contains("sí") || lowercasedMessage.contains("si") {
             print("DEBUG: User confirmed data is correct")
             isDataConfirmed = true
-            addAIMessage("¡Perfecto! Los datos están confirmados. Ahora necesito una foto tuya para completar tu perfil.")
+            addAIMessage("Perfect! The data is confirmed. Now I need a photo of you to complete your profile.")
             
             DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
                 print("DEBUG: Showing photo capture after confirmation")
                 showPhotoCapture = true
             }
             return
-        } else if lowercasedMessage.contains("no") || lowercasedMessage.contains("hay errores") {
+        } else if lowercasedMessage.contains("no") || lowercasedMessage.contains("errors") || lowercasedMessage.contains("wrong") {
             print("DEBUG: User says data has errors")
             isCorrectingData = true
-            addAIMessage("Entiendo, hay errores en los datos. Por favor, dime qué información está incorrecta y cómo debería ser.")
+            addAIMessage("I understand, there are errors in the data. Please tell me what information is incorrect and how it should be.")
             return
         }
         
@@ -673,7 +701,7 @@ struct AIChatView: View {
                     if correctionResponse.hasChanges {
                         print("DEBUG: Data correction has changes")
                         currentOCRResults = correctionResponse.correctedData
-                        addAIMessage("Perfecto, he actualizado los datos. ¿Está correcto ahora?")
+                        addAIMessage("Perfect, I've updated the data. Is it correct now?")
                         
                         // Show updated data card
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
@@ -721,56 +749,6 @@ struct AIChatView: View {
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
             showWelcomeScreen = true
-        }
-    }
-    
-    // MARK: - Speech Manager Setup
-    private func setupSpeechManager() {
-        speechManager.onTranscriptionUpdate = { text in
-            DispatchQueue.main.async {
-                currentMessage = text
-            }
-        }
-        
-        speechManager.onError = { error in
-            DispatchQueue.main.async {
-                // Only show temporary error for "No speech detected"
-                if error.contains("No speech detected") {
-                    showTemporaryError("No se detectó voz. Por favor, intenta de nuevo.")
-                } else {
-                    temporaryErrorMessage = error
-                    showTemporaryError = true
-                }
-            }
-        }
-        
-        speechManager.onTranscriptionComplete = { text in
-            DispatchQueue.main.async {
-                currentMessage = text
-                sendMessage()
-            }
-        }
-    }
-    
-    private func checkVoicePermission() {
-        SFSpeechRecognizer.requestAuthorization { status in
-            DispatchQueue.main.async {
-                hasVoicePermission = status == .authorized
-            }
-        }
-    }
-    
-    private func showTemporaryError(_ message: String) {
-        temporaryErrorMessage = message
-        withAnimation {
-            showTemporaryError = true
-        }
-        
-        // Hide the error message after 3 seconds
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-            withAnimation {
-                self.showTemporaryError = false
-            }
         }
     }
 }
@@ -923,17 +901,19 @@ struct DataRow: View {
     let value: String
     
     var body: some View {
-        HStack {
+        VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.white.opacity(0.8))
+                .foregroundColor(.secondary)
             
-            Spacer()
-            
-            Text(value)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(.white)
+            Text(value.isEmpty ? "No disponible" : value)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(value.isEmpty ? .secondary : .primary)
+                .multilineTextAlignment(.leading)
+                .lineLimit(nil)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 4)
     }
 }
 
@@ -969,7 +949,7 @@ class FrontCameraManager: NSObject, ObservableObject {
         guard let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: position) else {
             DispatchQueue.main.async {
                 self.hasError = true
-                self.errorMessage = "No se pudo acceder a la cámara"
+                self.errorMessage = "Could not access camera"
             }
             return
         }
@@ -997,7 +977,7 @@ class FrontCameraManager: NSObject, ObservableObject {
         } catch {
             DispatchQueue.main.async {
                 self.hasError = true
-                self.errorMessage = "Error configurando la cámara: \(error.localizedDescription)"
+                self.errorMessage = "Error setting up camera: \(error.localizedDescription)"
             }
         }
     }
@@ -1249,12 +1229,12 @@ struct PhotoCaptureView: View {
                 
                 // Instructions
                 VStack(spacing: 12) {
-                    Text("Toma una foto clara de tu rostro")
+                    Text("Take a clear photo of your face")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
                     
-                    Text("Mira directamente a la cámara y asegúrate de tener buena iluminación")
+                    Text("Look directly at the camera and make sure you have good lighting")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.white.opacity(0.8))
                         .multilineTextAlignment(.center)
@@ -1289,7 +1269,7 @@ struct PhotoCaptureView: View {
                         Image(systemName: "camera.rotate")
                             .font(.system(size: 16, weight: .medium))
                         
-                        Text("Cambiar cámara")
+                        Text("Switch Camera")
                             .font(.system(size: 16, weight: .medium))
                     }
                     .foregroundColor(.white)

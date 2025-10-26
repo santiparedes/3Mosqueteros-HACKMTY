@@ -3,8 +3,8 @@ import Foundation
 struct APIConfig {
     // MARK: - API Keys
     // TODO: Replace these with your actual API keys
-    static let geminiAPIKey = "YOUR_ACTUAL_GEMINI_API_KEY"
-    static let elevenLabsAPIKey = "YOUR_ACTUAL_ELEVENLABS_API_KEY"
+    static let geminiAPIKey = "" // Disabled for testing
+    static let elevenLabsAPIKey = "" // Disabled for testing
     
     // MARK: - API URLs
     static let geminiBaseURL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"

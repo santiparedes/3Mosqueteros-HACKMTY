@@ -18,13 +18,13 @@ struct ConsentView: View {
                 VStack(spacing: 32) {
                     // Header
                     VStack(spacing: 16) {
-                        Text("Bienvenido a Nep")
+                        Text("Welcome to Nep")
                             .font(.custom("BrunoACESC-regular", size: 36))
                             .fontWeight(.bold)
                             .foregroundColor(.white)
                             .multilineTextAlignment(.center)
                         
-                        Text("Para completar tu registro, necesitamos verificar tu identidad")
+                        Text("To complete your registration, we need to verify your identity")
                             .font(.system(size: 18, weight: .medium))
                             .foregroundColor(.white.opacity(0.9))
                             .multilineTextAlignment(.center)
@@ -41,7 +41,7 @@ struct ConsentView: View {
                             .cornerRadius(12)
                             .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
                         
-                        Text("Ejemplo de INE")
+                        Text("ID Card Example")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.white.opacity(0.7))
                     }
@@ -49,26 +49,26 @@ struct ConsentView: View {
                     
                     // Next Steps Instructions
                     VStack(spacing: 16) {
-                        Text("Próximos pasos")
+                        Text("Next Steps")
                             .font(.system(size: 20, weight: .semibold))
                             .foregroundColor(.white)
                         
                         VStack(alignment: .leading, spacing: 12) {
                             InstructionRow(
                                 number: "1",
-                                text: "Capturaremos una foto de tu INE (frente y reverso)"
+                                text: "We'll capture a photo of your ID (front and back)"
                             )
                             InstructionRow(
                                 number: "2", 
-                                text: "Extraeremos automáticamente tus datos personales"
+                                text: "We'll automatically extract your personal data"
                             )
                             InstructionRow(
                                 number: "3",
-                                text: "Verificaremos tu identidad de forma segura"
+                                text: "We'll verify your identity securely"
                             )
                             InstructionRow(
                                 number: "4",
-                                text: "Completaremos tu registro bancario"
+                                text: "We'll complete your banking registration"
                             )
                         }
                     }
@@ -78,15 +78,15 @@ struct ConsentView: View {
                     VStack(spacing: 20) {
                         ConsentCard(
                             icon: "camera.fill",
-                            title: "Acceso a la Cámara",
-                            description: "Necesitamos acceso a tu cámara para capturar fotos de tu identificación oficial (INE, pasaporte, etc.)",
+                            title: "Camera Access",
+                            description: "We need access to your camera to capture photos of your official ID (ID card, passport, etc.)",
                             isConsented: $cameraConsent
                         )
                         // Privacy Notice
                         ConsentCard(
                             icon: "lock.shield.fill",
-                            title: "Tus datos están protegidos",
-                            description: "• Encriptación de extremo a extremo\n• Cumplimiento con GDPR y LFPDPPP\n• No compartimos datos con terceros\n• Puedes eliminar tus datos en cualquier momento",
+                            title: "Your data is protected",
+                            description: "• End-to-end encryption\n• GDPR and LFPDPPP compliance\n• We don't share data with third parties\n• You can delete your data at any time",
                             isConsented: .constant(true)
                         )
                     }
@@ -99,7 +99,7 @@ struct ConsentView: View {
                         handleConsent()
                     }) {
                         HStack {
-                            Text("Continuar con Verificación")
+                            Text("Continue with Verification")
                                 .font(.system(size: 18, weight: .semibold))
                                 .foregroundColor(.white)
                             
@@ -131,11 +131,11 @@ struct ConsentView: View {
         .fullScreenCover(isPresented: $showCamera) {
             CameraCaptureView(isOnboardingComplete: $isOnboardingComplete)
         }
-        .alert("Permisos Requeridos", isPresented: $showAlert) {
-            Button("Configuración") {
+        .alert("Required Permissions", isPresented: $showAlert) {
+            Button("Settings") {
                 openAppSettings()
             }
-            Button("Cancelar", role: .cancel) { }
+            Button("Cancel", role: .cancel) { }
         } message: {
             Text(alertMessage)
         }
@@ -150,7 +150,7 @@ struct ConsentView: View {
                 if granted {
                     showCamera = true
                 } else {
-                    alertMessage = "Necesitamos acceso a la cámara para capturar tu identificación. Por favor, habilita el permiso en Configuración."
+                    alertMessage = "We need camera access to capture your ID. Please enable the permission in Settings."
                     showAlert = true
                 }
             }

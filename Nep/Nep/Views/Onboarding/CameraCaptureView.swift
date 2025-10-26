@@ -36,7 +36,7 @@ struct CameraCaptureView: View {
                                 .progressViewStyle(CircularProgressViewStyle(tint: .white))
                                 .scaleEffect(1.5)
                             
-                            Text("Iniciando cámara...")
+                            Text("Starting camera...")
                                 .font(.system(size: 16, weight: .medium))
                                 .foregroundColor(.white)
                                 .padding(.top, 20)
@@ -99,7 +99,7 @@ struct CameraCaptureView: View {
                     
                     Spacer()
                     
-                    Text(currentSide == .front ? "Frente de tu INE" : "Reverso de tu INE")
+                    Text(currentSide == .front ? "Front of your ID" : "Back of your ID")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(.white)
                         .padding(.horizontal, 20)
@@ -120,7 +120,7 @@ struct CameraCaptureView: View {
                                 .frame(width: 8, height: 8)
                         }
                         
-                        Text("INE")
+                        Text("ID")
                             .font(.system(size: 10, weight: .medium))
                             .foregroundColor(.white.opacity(0.8))
                     }
@@ -135,8 +135,8 @@ struct CameraCaptureView: View {
                 // Middle section - Combined instructions at top
                 VStack(spacing: 16) {
                     Text(currentSide == .front ? 
-                         "Coloca el FRENTE de tu INE dentro del marco. Asegúrate de que toda la información sea legible." :
-                         "Ahora voltea tu INE y coloca el REVERSO dentro del marco. Asegúrate de que toda la información sea legible.")
+                         "Place the FRONT of your ID within the frame. Make sure all information is readable." :
+                         "Now flip your ID and place the BACK within the frame. Make sure all information is readable.")
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)

@@ -28,7 +28,7 @@ struct OCRResultsView: View {
             VStack(spacing: 0) {
                 // Header
                 HStack {
-                    Text("Verificación de Datos")
+                    Text("Data Verification")
                         .font(.custom("BrunoACESC-regular", size: 28))
                         .fontWeight(.bold)
                         .foregroundColor(.white)
@@ -172,17 +172,17 @@ struct DataConfirmationView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Text("Datos Detectados")
+            Text("Detected Data")
                 .font(.system(size: 24, weight: .bold))
                 .foregroundColor(.white)
             
-            Text("Revisa y corrige los datos extraídos de tu identificación:")
+            Text("Review and correct the data extracted from your ID:")
                 .font(.system(size: 16, weight: .medium))
                 .foregroundColor(.white.opacity(0.8))
             
             VStack(spacing: 16) {
                 DataFieldView(
-                    title: "Nombre Completo",
+                    title: "Full Name",
                     value: results.fullName,
                     onEdit: { newValue in
                         handleNameEdit(newValue)
@@ -190,25 +190,25 @@ struct DataConfirmationView: View {
                 )
                 
                 DataFieldView(
-                    title: "Fecha de Nacimiento",
+                    title: "Date of Birth",
                     value: results.dateOfBirth,
                     onEdit: { onEdit(.dateOfBirth, $0) }
                 )
                 
                 DataFieldView(
-                    title: "Número de Documento",
+                    title: "Document Number",
                     value: results.documentNumber,
                     onEdit: { onEdit(.documentNumber, $0) }
                 )
                 
                 DataFieldView(
-                    title: "Nacionalidad",
+                    title: "Nationality",
                     value: results.nationality,
                     onEdit: { onEdit(.nationality, $0) }
                 )
                 
                 DataFieldView(
-                    title: "Dirección",
+                    title: "Address",
                     value: results.address,
                     onEdit: { onEdit(.address, $0) }
                 )
@@ -259,7 +259,7 @@ struct DataFieldView: View {
                             isEditing = false
                         }
                 } else {
-                    Text(value.isEmpty ? "No detectado" : value)
+                    Text(value.isEmpty ? "Not detected" : value)
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(value.isEmpty ? .white.opacity(0.5) : .white)
                 }
@@ -297,7 +297,7 @@ struct VoiceConversationView: View {
         VStack(spacing: 30) {
             // Voice interface
             VStack(spacing: 20) {
-                Text("Conversación con Asistente")
+                Text("Assistant Conversation")
                     .font(.system(size: 24, weight: .bold))
                     .foregroundColor(.white)
                 
@@ -345,7 +345,7 @@ struct VoiceConversationView: View {
                 }) {
                     HStack {
                         Image(systemName: elevenLabsService.isListening ? "stop.fill" : "mic.fill")
-                        Text(elevenLabsService.isListening ? "Detener" : "Hablar")
+                        Text(elevenLabsService.isListening ? "Stop" : "Speak")
                     }
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.white)
@@ -357,7 +357,7 @@ struct VoiceConversationView: View {
                 
                 Button(action: onNext) {
                     HStack {
-                        Text("Continuar")
+                        Text("Continue")
                         Image(systemName: "arrow.right")
                     }
                     .font(.system(size: 16, weight: .semibold))
@@ -381,21 +381,21 @@ struct AdditionalInfoView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Text("Información Adicional")
+            Text("Additional Information")
                 .font(.system(size: 24, weight: .bold))
                 .foregroundColor(.white)
             
-            Text("Completa la siguiente información:")
+            Text("Complete the following information:")
                 .font(.system(size: 16, weight: .medium))
                 .foregroundColor(.white.opacity(0.8))
             
             VStack(spacing: 16) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Ocupación")
+                    Text("Occupation")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.white.opacity(0.8))
                     
-                    TextField("Ej: Ingeniero, Doctor, Estudiante...", text: $occupation)
+                    TextField("Ex: Engineer, Doctor, Student...", text: $occupation)
                         .textFieldStyle(PlainTextFieldStyle())
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.white)
@@ -408,11 +408,11 @@ struct AdditionalInfoView: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Fuente Principal de Ingreso")
+                    Text("Primary Income Source")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.white.opacity(0.8))
                     
-                    TextField("Ej: Salario, Negocio propio, Inversiones...", text: $incomeSource)
+                    TextField("Ex: Salary, Own business, Investments...", text: $incomeSource)
                         .textFieldStyle(PlainTextFieldStyle())
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.white)
@@ -448,7 +448,7 @@ struct AdditionalInfoView: View {
                 onNext()
             }) {
                 HStack {
-                    Text("Continuar")
+                    Text("Continue")
                     Image(systemName: "arrow.right")
                 }
                 .font(.system(size: 16, weight: .semibold))
@@ -478,28 +478,28 @@ struct FinalConfirmationView: View {
     
     var body: some View {
         VStack(spacing: 30) {
-            Text("¡Verificación Completa!")
+            Text("Verification Complete!")
                 .font(.custom("BrunoACESC-regular", size: 32))
                 .fontWeight(.bold)
                 .foregroundColor(.white)
                 .multilineTextAlignment(.center)
             
-            Text("Todos tus datos han sido verificados correctamente")
+            Text("All your data has been verified correctly")
                 .font(.system(size: 18, weight: .medium))
                 .foregroundColor(.white.opacity(0.8))
                 .multilineTextAlignment(.center)
             
             // Summary card
             VStack(alignment: .leading, spacing: 12) {
-                Text("Resumen de tu perfil:")
+                Text("Your profile summary:")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.white)
                 
                 VStack(alignment: .leading, spacing: 8) {
-                    SummaryRow(title: "Nombre", value: results.fullName)
-                    SummaryRow(title: "Fecha de Nacimiento", value: results.dateOfBirth)
-                    SummaryRow(title: "Documento", value: results.documentNumber)
-                    SummaryRow(title: "Ocupación", value: results.occupation)
+                    SummaryRow(title: "Name", value: results.fullName)
+                    SummaryRow(title: "Date of Birth", value: results.dateOfBirth)
+                    SummaryRow(title: "Document", value: results.documentNumber)
+                    SummaryRow(title: "Occupation", value: results.occupation)
                 }
             }
             .padding(20)
@@ -517,7 +517,7 @@ struct FinalConfirmationView: View {
                             .progressViewStyle(CircularProgressViewStyle(tint: .white))
                             .scaleEffect(0.8)
                     } else {
-                        Text("Finalizar Registro")
+                        Text("Complete Registration")
                         Image(systemName: "checkmark.circle.fill")
                     }
                 }
@@ -539,10 +539,10 @@ struct FinalConfirmationView: View {
         }
         .padding(20)
         .alert("Error", isPresented: $showError) {
-            Button("Reintentar") {
+            Button("Retry") {
                 submitOnboardingData()
             }
-            Button("Cancelar", role: .cancel) { }
+            Button("Cancel", role: .cancel) { }
         } message: {
             Text(errorMessage)
         }
@@ -603,7 +603,7 @@ struct INEDataConfirmationView: View {
             // Header with INE validation status
             HStack {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Datos de INE Detectados")
+                    Text("ID Data Detected")
                         .font(.system(size: 24, weight: .bold))
                         .foregroundColor(.white)
                     
@@ -613,11 +613,11 @@ struct INEDataConfirmationView: View {
                                 .foregroundColor(analysis.isValid ? .green : .orange)
                                 .font(.system(size: 20))
                             
-                            Text(analysis.isValid ? "INE Válida" : "Requiere Verificación")
+                            Text(analysis.isValid ? "Valid ID" : "Requires Verification")
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(analysis.isValid ? .green : .orange)
                             
-                            Text("Confianza: \(Int(analysis.confidence * 100))%")
+                            Text("Confidence: \(Int(analysis.confidence * 100))%")
                                 .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(.white.opacity(0.8))
                         }
@@ -637,7 +637,7 @@ struct INEDataConfirmationView: View {
                 }
             }
             
-            Text("Revisa y corrige los datos extraídos de tu INE:")
+            Text("Review and correct the data extracted from your ID:")
                 .font(.system(size: 16, weight: .medium))
                 .foregroundColor(.white.opacity(0.8))
             
@@ -706,7 +706,7 @@ struct INEDataFieldView: View {
                             isEditing = false
                         }
                 } else {
-                    Text(value.isEmpty ? "No detectado" : value)
+                    Text(value.isEmpty ? "Not detected" : value)
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(value.isEmpty ? .white.opacity(0.5) : .white)
                 }
@@ -755,11 +755,11 @@ struct INEAnalysisView: View {
                                     .foregroundColor(analysis.isValid ? .green : .orange)
                                 
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(analysis.isValid ? "INE Válida" : "Requiere Atención")
+                                    Text(analysis.isValid ? "Valid ID" : "Requires Attention")
                                         .font(.system(size: 24, weight: .bold))
                                         .foregroundColor(.white)
                                     
-                                    Text("Confianza: \(Int(analysis.confidence * 100))%")
+                                    Text("Confidence: \(Int(analysis.confidence * 100))%")
                                         .font(.system(size: 16, weight: .medium))
                                         .foregroundColor(.white.opacity(0.8))
                                 }
@@ -771,7 +771,7 @@ struct INEAnalysisView: View {
                         // Missing Fields
                         if !analysis.missingFields.isEmpty {
                             VStack(alignment: .leading, spacing: 12) {
-                                Text("Campos Faltantes")
+                                Text("Missing Fields")
                                     .font(.system(size: 18, weight: .bold))
                                     .foregroundColor(.white)
                                 
@@ -796,7 +796,7 @@ struct INEAnalysisView: View {
                         // Suggestions
                         if !analysis.suggestions.isEmpty {
                             VStack(alignment: .leading, spacing: 12) {
-                                Text("Sugerencias")
+                                Text("Suggestions")
                                     .font(.system(size: 18, weight: .bold))
                                     .foregroundColor(.white)
                                 
@@ -821,11 +821,11 @@ struct INEAnalysisView: View {
                     .padding(20)
                 }
             }
-            .navigationTitle("Análisis de INE")
+            .navigationTitle("ID Analysis")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Cerrar") {
+                    Button("Close") {
                         dismiss()
                     }
                     .foregroundColor(.nepBlue)
@@ -844,7 +844,7 @@ struct PersonalInfoSection: View {
     var body: some View {
         VStack(spacing: 12) {
             INEDataFieldView(
-                title: "Nombre Completo",
+                title: "Full Name",
                 value: results.fullName,
                 onEdit: handleNameEdit
             )
@@ -856,13 +856,13 @@ struct PersonalInfoSection: View {
             )
             
             INEDataFieldView(
-                title: "Fecha de Nacimiento",
+                title: "Date of Birth",
                 value: results.dateOfBirth,
                 onEdit: { onEdit(.dateOfBirth, $0) }
             )
             
             INEDataFieldView(
-                title: "Número de INE",
+                title: "ID Number",
                 value: results.documentNumber,
                 onEdit: { onEdit(.documentNumber, $0) }
             )
@@ -877,25 +877,25 @@ struct LocationInfoSection: View {
     var body: some View {
         VStack(spacing: 12) {
             INEDataFieldView(
-                title: "Estado",
+                title: "State",
                 value: results.state,
                 onEdit: { onEdit(.state, $0) }
             )
             
             INEDataFieldView(
-                title: "Municipio",
+                title: "Municipality",
                 value: results.municipality,
                 onEdit: { onEdit(.municipality, $0) }
             )
             
             INEDataFieldView(
-                title: "Localidad",
+                title: "Locality",
                 value: results.locality,
                 onEdit: { onEdit(.locality, $0) }
             )
             
             INEDataFieldView(
-                title: "Sección Electoral",
+                title: "Electoral Section",
                 value: results.electoralSection,
                 onEdit: { onEdit(.electoralSection, $0) }
             )
@@ -910,13 +910,13 @@ struct DocumentInfoSection: View {
     var body: some View {
         VStack(spacing: 12) {
             INEDataFieldView(
-                title: "Fecha de Emisión",
+                title: "Issue Date",
                 value: results.issueDate,
                 onEdit: { onEdit(.issueDate, $0) }
             )
             
             INEDataFieldView(
-                title: "Fecha de Vencimiento",
+                title: "Expiration Date",
                 value: results.expirationDate,
                 onEdit: { onEdit(.expirationDate, $0) }
             )
