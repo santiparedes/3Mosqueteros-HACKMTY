@@ -104,65 +104,16 @@ struct AIChatView: View {
                     
                     // AI response area with gradient text
                     if isTyping {
-                        VStack(spacing: 20) {
-                            Text("Procesando tu información...")
-                                .font(.system(size: 20, weight: .medium))
-                                .padding(.vertical, 12)
-                                .foregroundStyle(
-                                    LinearGradient(
-                                        colors: [.white.opacity(0.8), .white.opacity(0.6)],
-                                        startPoint: .bottomLeading,
-                                        endPoint: .topTrailing
-                                    )
+                        Text("Pensando...")
+                            .font(.system(size: 20, weight: .medium))
+                            .padding(.vertical, 12)
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [.white.opacity(0.8), .white.opacity(0.6)],
+                                    startPoint: .bottomLeading,
+                                    endPoint: .topTrailing
                                 )
-                            
-                            // Processing sources with gradient text
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Verificando datos del INE")
-                                    .font(.system(size: 16, weight: .medium))
-                                    .padding(.vertical, 4)
-                                    .foregroundStyle(
-                                        LinearGradient(
-                                            colors: [.white.opacity(0.7), .white.opacity(0.5)],
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
-                                
-                                Text("Validando información personal")
-                                    .font(.system(size: 16, weight: .medium))
-                                    .padding(.vertical, 4)
-                                    .foregroundStyle(
-                                        LinearGradient(
-                                            colors: [.white.opacity(0.6), .white.opacity(0.4)],
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
-                                
-                                Text("Preparando confirmación")
-                                    .font(.system(size: 16, weight: .medium))
-                                    .padding(.vertical, 4)
-                                    .foregroundStyle(
-                                        LinearGradient(
-                                            colors: [.white.opacity(0.5), .white.opacity(0.3)],
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
-                                
-                                Text("... y más")
-                                    .font(.system(size: 16, weight: .medium))
-                                    .padding(.vertical, 4)
-                                    .foregroundStyle(
-                                        LinearGradient(
-                                            colors: [.white.opacity(0.4), .white.opacity(0.2)],
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
-                            }
-                        }
+                            )
                     } else if let lastAIMessage = messages.last(where: { !$0.isUser }) {
                         Text(lastAIMessage.text)
                             .font(.system(size: 38, weight: .medium))
