@@ -25,7 +25,7 @@ struct WelcomeView: View {
                 VStack(spacing: 20) {
                     // NEP Text with custom font
                     if showNEP {
-                        Text("NEP")
+                        Text("Nep")
                             .font(.custom("BrunoACESC-regular", size: 48))
                             .fontWeight(.bold)
                             .foregroundColor(.white)

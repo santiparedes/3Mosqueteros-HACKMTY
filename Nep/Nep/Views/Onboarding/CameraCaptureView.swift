@@ -2,13 +2,19 @@ import SwiftUI
 import AVFoundation
 import Vision
 import UIKit
+import AudioToolbox
 
 struct CameraCaptureView: View {
     @StateObject private var cameraManager = CameraManager()
+    @State private var frontImage: UIImage?
+    @State private var backImage: UIImage?
     @State private var capturedImage: UIImage?
+    @State private var currentSide: IDSide = .front
     @State private var showProcessing = false
     @State private var showOCRResults = false
     @State private var ocrResults: OCRResults?
+    @State private var showCaptureFlash = false
+    @State private var showCaptureCheckmark = false
     @Binding var isOnboardingComplete: Bool
     @Environment(\.dismiss) private var dismiss
     
@@ -38,6 +44,43 @@ struct CameraCaptureView: View {
                     )
             }
             
+            // Capture flash animation
+            if showCaptureFlash {
+                Color.white
+                    .ignoresSafeArea(.all)
+                    .opacity(0.8)
+                    .animation(.easeOut(duration: 0.1), value: showCaptureFlash)
+            }
+            
+            // Capture success checkmark
+            if showCaptureCheckmark {
+                VStack {
+                    Spacer()
+                    
+                    HStack {
+                        Spacer()
+                        
+                        ZStack {
+                            Circle()
+                                .fill(Color.green)
+                                .frame(width: 60, height: 60)
+                                .scaleEffect(showCaptureCheckmark ? 1.0 : 0.1)
+                                .animation(.spring(response: 0.3, dampingFraction: 0.6), value: showCaptureCheckmark)
+                            
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 24, weight: .bold))
+                                .foregroundColor(.white)
+                                .scaleEffect(showCaptureCheckmark ? 1.0 : 0.1)
+                                .animation(.spring(response: 0.3, dampingFraction: 0.6).delay(0.1), value: showCaptureCheckmark)
+                        }
+                        
+                        Spacer()
+                    }
+                    
+                    Spacer()
+                }
+            }
+            
             // Overlay UI - Properly distributed across screen
             VStack(spacing: 0) {
                 // Header - Top section
@@ -56,7 +99,7 @@ struct CameraCaptureView: View {
                     
                     Spacer()
                     
-                    Text("Captura tu INE")
+                    Text(currentSide == .front ? "Frente de tu INE" : "Reverso de tu INE")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(.white)
                         .padding(.horizontal, 20)
@@ -66,11 +109,16 @@ struct CameraCaptureView: View {
                     
                     Spacer()
                     
-                    // Debug info
+                    // Progress indicator
                     VStack(spacing: 4) {
-                        Circle()
-                            .fill(capturedImage != nil ? Color.nepBlue : Color.white.opacity(0.5))
-                            .frame(width: 8, height: 8)
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(frontImage != nil ? Color.nepBlue : Color.white.opacity(0.5))
+                                .frame(width: 8, height: 8)
+                            Circle()
+                                .fill(backImage != nil ? Color.nepBlue : Color.white.opacity(0.5))
+                                .frame(width: 8, height: 8)
+                        }
                         
                         Text("INE")
                             .font(.system(size: 10, weight: .medium))
@@ -86,7 +134,9 @@ struct CameraCaptureView: View {
                 
                 // Middle section - Combined instructions at top
                 VStack(spacing: 16) {
-                    Text("Coloca tu INE dentro del marco. Asegúrate de que toda la información sea legible.")
+                    Text(currentSide == .front ? 
+                         "Coloca el FRENTE de tu INE dentro del marco. Asegúrate de que toda la información sea legible." :
+                         "Ahora voltea tu INE y coloca el REVERSO dentro del marco. Asegúrate de que toda la información sea legible.")
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
@@ -158,6 +208,11 @@ struct CameraCaptureView: View {
                             Button(action: {
                                 print("DEBUG: User tapped retake button")
                                 capturedImage = nil
+                                frontImage = nil
+                                backImage = nil
+                                currentSide = .front
+                                showCaptureFlash = false
+                                showCaptureCheckmark = false
                             }) {
                                 Image(systemName: "arrow.clockwise")
                                     .font(.system(size: 20, weight: .semibold))
@@ -232,19 +287,91 @@ struct CameraCaptureView: View {
     }
     
     private func capturePhoto() {
-        print("DEBUG: Attempting to capture photo")
+        print("DEBUG: Attempting to capture photo for \(currentSide == .front ? "front" : "back") side")
+        
+        // Haptic feedback for capture
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+        
+        // Camera shutter sound
+        AudioServicesPlaySystemSound(1108) // Camera shutter sound
+        
+        // Trigger capture animations
+        withAnimation(.easeInOut(duration: 0.1)) {
+            showCaptureFlash = true
+        }
+        
+        // Hide flash after animation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            withAnimation(.easeOut(duration: 0.1)) {
+                showCaptureFlash = false
+            }
+        }
+        
+        // Show success checkmark
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            withAnimation {
+                showCaptureCheckmark = true
+            }
+        }
+        
+        // Hide checkmark after delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            withAnimation {
+                showCaptureCheckmark = false
+            }
+        }
         
         cameraManager.capturePhoto { image in
             DispatchQueue.main.async {
                 if let image = image {
-                    print("DEBUG: Photo captured successfully")
+                    print("DEBUG: Photo captured successfully for \(self.currentSide == .front ? "front" : "back") side")
+                    
+                    // Set capturedImage for UI compatibility
                     self.capturedImage = image
-                    // Skip preview, go straight to processing
-                    self.processImage()
+                    
+                    if self.currentSide == .front {
+                        self.frontImage = image
+                        // Switch to back side
+                        self.currentSide = .back
+                        print("DEBUG: Switching to back side capture")
+                    } else {
+                        self.backImage = image
+                        // Both sides captured, process both
+                        self.processBothImages()
+                    }
                 } else {
                     print("DEBUG: Failed to capture photo")
-                    // You could show an error alert here
+                    // Hide animations on failure
+                    self.showCaptureFlash = false
+                    self.showCaptureCheckmark = false
                 }
+            }
+        }
+    }
+    
+    private func processBothImages() {
+        print("DEBUG: Starting dual-side image processing")
+        showProcessing = true
+        
+        // Process both images with OCR
+        Task {
+            guard let front = frontImage, let back = backImage else {
+                print("DEBUG: Missing front or back image")
+                await MainActor.run {
+                    showProcessing = false
+                }
+                return
+            }
+            
+            print("DEBUG: Processing both sides with OCR")
+            let results = await processBothSidesOCR(frontImage: front, backImage: back)
+            
+            await MainActor.run {
+                print("DEBUG: Dual-side OCR processing completed")
+                showProcessing = false
+                ocrResults = results
+                showOCRResults = true
             }
         }
     }
@@ -283,6 +410,19 @@ struct CameraCaptureView: View {
         let results = await ocrService.processDocument(image, side: .front)
         
         print("DEBUG: OCR results - Name: \(results.firstName) \(results.lastName), CURP: \(results.curp)")
+        
+        return results
+    }
+    
+    private func processBothSidesOCR(frontImage: UIImage, backImage: UIImage) async -> OCRResults {
+        print("DEBUG: Starting dual-side OCR processing")
+        let ocrService = OCRService.shared
+        
+        // Process both sides using the new method
+        let results = await ocrService.processBothSides(frontImage: frontImage, backImage: backImage)
+        
+        print("DEBUG: Dual-side OCR results - Name: \(results.firstName) \(results.lastName), CURP: \(results.curp)")
+        print("DEBUG: Address: \(results.address), Electoral: \(results.electoralSection)")
         
         return results
     }

@@ -18,7 +18,22 @@ class CameraManager: NSObject, ObservableObject {
     }
     
     private func setupCamera() {
-        guard let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
+        // Try to use macro camera first for better document capture
+        var camera: AVCaptureDevice?
+        
+        if #available(iOS 15.0, *) {
+            // Try macro camera first (better for close-up document capture)
+            camera = AVCaptureDevice.default(.builtInUltraWideCamera, for: .video, position: .back)
+            if camera == nil {
+                // Fallback to wide angle camera
+                camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back)
+            }
+        } else {
+            // Fallback for older iOS versions
+            camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back)
+        }
+        
+        guard let selectedCamera = camera else {
             DispatchQueue.main.async {
                 self.hasError = true
                 self.errorMessage = "No se pudo acceder a la cámara"
@@ -28,25 +43,27 @@ class CameraManager: NSObject, ObservableObject {
         
         // Enable focus for better document capture
         do {
-            try camera.lockForConfiguration()
-            if camera.isFocusModeSupported(.continuousAutoFocus) {
-                camera.focusMode = .continuousAutoFocus
+            try selectedCamera.lockForConfiguration()
+            if selectedCamera.isFocusModeSupported(.continuousAutoFocus) {
+                selectedCamera.focusMode = .continuousAutoFocus
             }
-            if camera.isAutoFocusRangeRestrictionSupported {
-                camera.autoFocusRangeRestriction = .near
+            if selectedCamera.isAutoFocusRangeRestrictionSupported {
+                selectedCamera.autoFocusRangeRestriction = .near
             }
-            camera.unlockForConfiguration()
+            selectedCamera.unlockForConfiguration()
         } catch {
             print("Could not set camera focus: \(error)")
         }
         
         do {
-            let input = try AVCaptureDeviceInput(device: camera)
+            let input = try AVCaptureDeviceInput(device: selectedCamera)
             
             // Configure session preset first
             if captureSession.canSetSessionPreset(.photo) {
                 captureSession.sessionPreset = .photo
             }
+            
+            // Note: AVCaptureSession doesn't have a delegate property
             
             if captureSession.canAddInput(input) {
                 captureSession.addInput(input)
@@ -118,11 +135,8 @@ class CameraManager: NSObject, ObservableObject {
                 self.captureSession.startRunning()
             }
             
-            // Always update UI on main thread
-            DispatchQueue.main.async {
-                self.isSessionRunning = self.captureSession.isRunning
-                print("Camera session started: \(self.isSessionRunning)")
-            }
+            // Update session state on main thread
+            self.updateSessionState()
         }
     }
     
@@ -131,10 +145,9 @@ class CameraManager: NSObject, ObservableObject {
         
         DispatchQueue.global(qos: .userInitiated).async {
             self.captureSession.stopRunning()
-            DispatchQueue.main.async {
-                self.isSessionRunning = false
-                print("Camera session stopped")
-            }
+            
+            // Update session state on main thread
+            self.updateSessionState()
         }
     }
     
@@ -261,5 +274,15 @@ extension CameraManager: AVCaptureVideoDataOutputSampleBufferDelegate {
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         // Here you could add real-time document detection
         // For now, we'll keep it simple
+    }
+}
+
+// MARK: - Session State Management
+extension CameraManager {
+    private func updateSessionState() {
+        DispatchQueue.main.async {
+            self.isSessionRunning = self.captureSession.isRunning
+            print("DEBUG: Camera session state updated: \(self.isSessionRunning)")
+        }
     }
 }

@@ -82,30 +82,15 @@ struct ConsentView: View {
                             description: "Necesitamos acceso a tu cámara para capturar fotos de tu identificación oficial (INE, pasaporte, etc.)",
                             isConsented: $cameraConsent
                         )
+                        // Privacy Notice
+                        ConsentCard(
+                            icon: "lock.shield.fill",
+                            title: "Tus datos están protegidos",
+                            description: "• Encriptación de extremo a extremo\n• Cumplimiento con GDPR y LFPDPPP\n• No compartimos datos con terceros\n• Puedes eliminar tus datos en cualquier momento",
+                            isConsented: .constant(true)
+                        )
                     }
                     .padding(.horizontal, 20)
-                    
-                    // Privacy Notice
-                    VStack(spacing: 12) {
-                        Text("🔒 Tus datos están protegidos")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.white)
-                        
-                        Text("• Encriptación de extremo a extremo\n• Cumplimiento con GDPR y LFPDPPP\n• No compartimos datos con terceros\n• Puedes eliminar tus datos en cualquier momento")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.white.opacity(0.8))
-                            .multilineTextAlignment(.leading)
-                    }
-                    .padding(.horizontal, 30)
-                    .padding(.vertical, 20)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(Color.white.opacity(0.1))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                            )
-                    )
                     
                     Spacer(minLength: 40)
                     
