@@ -14,22 +14,23 @@ class SupabaseService: ObservableObject {
         self.client = SupabaseConfig.shared.client
     }
     
-    // MARK: - User Operations
+    // MARK: - User Operations (using customers table)
     
     func createUser(_ user: User) async throws -> User {
         isLoading = true
         defer { isLoading = false }
         
         do {
-            let response: User = try await client
-                .from("users")
-                .insert(user)
+            let dbCustomer = DatabaseMappingService.mapToDatabaseCustomer(from: user)
+            let response: DatabaseCustomer = try await client
+                .from("customers")
+                .insert(dbCustomer)
                 .select()
                 .single()
                 .execute()
                 .value
             
-            return response
+            return DatabaseMappingService.mapToUser(from: response)
         } catch {
             errorMessage = "Failed to create user: \(error.localizedDescription)"
             throw error
@@ -41,15 +42,15 @@ class SupabaseService: ObservableObject {
         defer { isLoading = false }
         
         do {
-            let response: User = try await client
-                .from("users")
+            let response: DatabaseCustomer = try await client
+                .from("customers")
                 .select()
-                .eq("id", value: id)
+                .eq("customer_id", value: id)
                 .single()
                 .execute()
                 .value
             
-            return response
+            return DatabaseMappingService.mapToUser(from: response)
         } catch {
             errorMessage = "Failed to get user: \(error.localizedDescription)"
             throw error
@@ -61,16 +62,17 @@ class SupabaseService: ObservableObject {
         defer { isLoading = false }
         
         do {
-            let response: User = try await client
-                .from("users")
-                .update(user)
-                .eq("id", value: user.id)
+            let dbCustomer = DatabaseMappingService.mapToDatabaseCustomer(from: user)
+            let response: DatabaseCustomer = try await client
+                .from("customers")
+                .update(dbCustomer)
+                .eq("customer_id", value: user.id)
                 .select()
                 .single()
                 .execute()
                 .value
             
-            return response
+            return DatabaseMappingService.mapToUser(from: response)
         } catch {
             errorMessage = "Failed to update user: \(error.localizedDescription)"
             throw error
@@ -84,14 +86,14 @@ class SupabaseService: ObservableObject {
         defer { isLoading = false }
         
         do {
-            let response: [Account] = try await client
+            let response: [DatabaseAccount] = try await client
                 .from("accounts")
                 .select()
                 .eq("customer_id", value: userId)
                 .execute()
                 .value
             
-            return response
+            return response.map { DatabaseMappingService.mapToAccount(from: $0) }
         } catch {
             errorMessage = "Failed to get accounts: \(error.localizedDescription)"
             throw error
@@ -103,15 +105,16 @@ class SupabaseService: ObservableObject {
         defer { isLoading = false }
         
         do {
-            let response: Account = try await client
+            let dbAccount = DatabaseMappingService.mapToDatabaseAccount(from: account)
+            let response: DatabaseAccount = try await client
                 .from("accounts")
-                .insert(account)
+                .insert(dbAccount)
                 .select()
                 .single()
                 .execute()
                 .value
             
-            return response
+            return DatabaseMappingService.mapToAccount(from: response)
         } catch {
             errorMessage = "Failed to create account: \(error.localizedDescription)"
             throw error
@@ -123,16 +126,17 @@ class SupabaseService: ObservableObject {
         defer { isLoading = false }
         
         do {
-            let response: Account = try await client
+            let dbAccount = DatabaseMappingService.mapToDatabaseAccount(from: account)
+            let response: DatabaseAccount = try await client
                 .from("accounts")
-                .update(account)
-                .eq("id", value: account.id)
+                .update(dbAccount)
+                .eq("account_id", value: account.id)
                 .select()
                 .single()
                 .execute()
                 .value
             
-            return response
+            return DatabaseMappingService.mapToAccount(from: response)
         } catch {
             errorMessage = "Failed to update account: \(error.localizedDescription)"
             throw error
@@ -146,14 +150,14 @@ class SupabaseService: ObservableObject {
         defer { isLoading = false }
         
         do {
-            let response: [Card] = try await client
+            let response: [DatabaseCard] = try await client
                 .from("cards")
                 .select()
                 .eq("customer_id", value: userId)
                 .execute()
                 .value
             
-            return response
+            return response.map { DatabaseMappingService.mapToCard(from: $0) }
         } catch {
             errorMessage = "Failed to get cards: \(error.localizedDescription)"
             throw error
@@ -285,21 +289,56 @@ class SupabaseService: ObservableObject {
         }
     }
     
+    // MARK: - Customer Operations
+    
+    func getCustomers() async throws -> [DatabaseCustomer] {
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            let response: [DatabaseCustomer] = try await client
+                .from("customers")
+                .select("*")
+                .execute()
+                .value
+            
+            return response
+        } catch {
+            errorMessage = "Failed to get customers: \(error.localizedDescription)"
+            throw error
+        }
+    }
+    
     // MARK: - Health Check
     
     func testConnection() async throws -> Bool {
         print("🔍 SupabaseService: Testing connection...")
         
+        // First, let's test with a very simple query
         do {
-            let _: [String] = try await client
-                .from("users")
-                .select("id")
+            let response = try await client
+                .from("customers")
+                .select("*")
                 .limit(1)
                 .execute()
-                .value
             
-            print("✅ SupabaseService: Connection successful!")
-            return true
+            print("📊 SupabaseService: Response status - \(response.response.statusCode)")
+            
+            let data = response.data
+            let jsonString = String(data: data, encoding: .utf8) ?? "No data"
+            print("📄 SupabaseService: Response content - \(jsonString)")
+            
+            // Try to decode as array of customer objects
+            do {
+                let customers: [DatabaseCustomer] = try JSONDecoder().decode([DatabaseCustomer].self, from: data)
+                print("✅ SupabaseService: Connection successful! Found \(customers.count) customers")
+                return true
+            } catch {
+                print("⚠️ SupabaseService: Could not decode customers, but connection works")
+                print("📝 Decode error: \(error)")
+                return true // Still consider it a successful connection
+            }
+            
         } catch {
             print("❌ SupabaseService: Connection failed - \(error)")
             print("📝 SupabaseService: Error details - \(error.localizedDescription)")
@@ -307,4 +346,5 @@ class SupabaseService: ObservableObject {
             return false
         }
     }
+    
 }

@@ -10,10 +10,11 @@ class BankingViewModel: ObservableObject {
     @Published var errorMessage: String?
     
     private let nessieAPI = NessieAPI.shared
+    private let supabaseService = SupabaseService.shared
     private var cancellables = Set<AnyCancellable>()
     
     init() {
-        loadMockData()
+        loadDataFromSupabase()
     }
     
     // MARK: - Data Loading
@@ -131,6 +132,65 @@ class BankingViewModel: ObservableObject {
         accounts = MockData.sampleAccounts
         transactions = MockData.sampleTransactions
         cards = MockData.sampleCards
+    }
+    
+    func loadDataFromSupabase() {
+        isLoading = true
+        errorMessage = nil
+        
+        Task {
+            do {
+                print("🔄 BankingViewModel: Loading data from Supabase...")
+                
+                // Get the first customer from Supabase (Maria Garcia)
+                let customers = try await supabaseService.getCustomers()
+                
+                if let firstCustomer = customers.first {
+                    print("👤 BankingViewModel: Found customer - \(firstCustomer.firstName ?? "Unknown") \(firstCustomer.lastName ?? "")")
+                    
+                    // Convert to User
+                    let user = DatabaseMappingService.mapToUser(from: firstCustomer)
+                    
+                    // Load accounts for this customer
+                    let accounts = try await supabaseService.getAccounts(for: firstCustomer.customerId)
+                    print("💳 BankingViewModel: Found \(accounts.count) accounts")
+                    
+                    // Load cards for this customer
+                    let cards = try await supabaseService.getCards(for: firstCustomer.customerId)
+                    print("💳 BankingViewModel: Found \(cards.count) cards")
+                    
+                    // Load transactions for the first account
+                    var transactions: [Transaction] = []
+                    if let firstAccount = accounts.first {
+                        transactions = try await supabaseService.getTransactions(for: firstAccount.id)
+                        print("📊 BankingViewModel: Found \(transactions.count) transactions")
+                    }
+                    
+                    await MainActor.run {
+                        self.user = user
+                        self.accounts = accounts
+                        self.cards = cards
+                        self.transactions = transactions
+                        self.isLoading = false
+                        print("✅ BankingViewModel: Data loaded successfully from Supabase!")
+                    }
+                } else {
+                    print("⚠️ BankingViewModel: No customers found, falling back to mock data")
+                    await MainActor.run {
+                        self.loadMockData()
+                        self.isLoading = false
+                    }
+                }
+                
+            } catch {
+                print("❌ BankingViewModel: Failed to load from Supabase - \(error)")
+                await MainActor.run {
+                    self.loadMockData() // Fallback to mock data
+                    self.isLoading = false
+                    self.errorMessage = "Failed to load data: \(error.localizedDescription)"
+                }
+            }
+        }
     }
     
     // MARK: - Account Operations
