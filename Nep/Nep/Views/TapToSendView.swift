@@ -41,22 +41,29 @@ struct TapToSendView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                // Clean light background
-                Color(.systemBackground)
-                    .ignoresSafeArea()
+                // Modern gradient background
+                LinearGradient(
+                    colors: [
+                        Color(.systemBackground),
+                        Color.blue.opacity(0.05),
+                        Color.purple.opacity(0.03)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
                 
                 // Only show content if not going directly to auth
                 if !showBiometricAuth {
                     ScrollView {
-                        VStack(spacing: 32) {
-                            Spacer()
+                        VStack(spacing: 40) {
+                            Spacer(minLength: 20)
                             headerSection
-                            Spacer()
+                            Spacer(minLength: 20)
                             actionButtonsSection
+                            Spacer(minLength: 40)
                         }
                         .padding(.horizontal, 24)
-                        .padding(.top, 20)
-                        .padding(.bottom, 40)
                     }
                 }
             }
@@ -251,40 +258,60 @@ struct TapToSendView: View {
     
     // MARK: - Header Section
     private var headerSection: some View {
-        VStack(spacing: 24) {
-            // Clean icon with subtle animation
+        VStack(spacing: 32) {
+            // Modern animated icon with gradient
             ZStack {
-                // Subtle background circle
+                // Outer glow effect
                 Circle()
-                    .fill(Color.blue.opacity(0.1))
-                    .frame(width: 120, height: 120)
-                    .scaleEffect(isPulsing ? 1.05 : 1.0)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                Color.blue.opacity(0.2),
+                                Color.blue.opacity(0.1),
+                                Color.clear
+                            ],
+                            center: .center,
+                            startRadius: 30,
+                            endRadius: 80
+                        )
+                    )
+                    .frame(width: 160, height: 160)
+                    .scaleEffect(isPulsing ? 1.1 : 1.0)
                     .animation(
-                        Animation.easeInOut(duration: 2.0)
+                        Animation.easeInOut(duration: 2.5)
                             .repeatForever(autoreverses: true),
                         value: isPulsing
                     )
                 
-                // Main icon - just a simple circle, no phone
+                // Main background circle - solid blue
                 Circle()
                     .fill(Color.blue)
-                    .frame(width: 60, height: 60)
-                    .scaleEffect(connectionEstablished ? 1.1 : 1.0)
+                    .frame(width: 100, height: 100)
+                    .scaleEffect(connectionEstablished ? 1.15 : 1.0)
+                    .animation(.spring(response: 0.6, dampingFraction: 0.7), value: connectionEstablished)
+                    .shadow(color: .blue.opacity(0.2), radius: 15, x: 0, y: 5)
+                
+                // Icon inside
+                Image(systemName: getHeaderIcon())
+                    .font(.system(size: 40, weight: .medium))
+                    .foregroundColor(.white)
+                    .scaleEffect(connectionEstablished ? 1.2 : 1.0)
                     .animation(.spring(response: 0.4, dampingFraction: 0.8), value: connectionEstablished)
             }
             
-            // Clean typography
-            VStack(spacing: 12) {
-                Text("NepPay")
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
+            // Enhanced typography with better hierarchy
+            VStack(spacing: 16) {
+                Text(getHeaderTitle())
+                    .font(.system(size: 36, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
                     
-                Text("Send money instantly with a simple tap")
-                    .font(.system(size: 17, weight: .medium))
+                Text(getHeaderSubtitle())
+                    .font(.system(size: 18, weight: .medium))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
-                    .lineLimit(2)
+                    .lineLimit(3)
+                    .padding(.horizontal, 20)
             }
             
             // Send/Receive Mode Selection
@@ -341,8 +368,8 @@ struct TapToSendView: View {
     
     // MARK: - Action Buttons Section
     private var actionButtonsSection: some View {
-        VStack(spacing: 12) {
-            // Primary Action Button - Different behavior for send vs receive
+        VStack(spacing: 20) {
+            // Primary Action Button - Enhanced design with gradient
             Button(action: {
                 if isSendingMode {
                     // Send mode - go to auth then confirmation
@@ -352,70 +379,111 @@ struct TapToSendView: View {
                     showConnectionConfirmation = true
                 }
             }) {
-                HStack(spacing: 8) {
-                    Image(systemName: isSendingMode ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
-                        .font(.system(size: 18, weight: .medium))
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.white.opacity(0.2))
+                            .frame(width: 32, height: 32)
+                        
+                        Image(systemName: isSendingMode ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
+                    
                     Text(isSendingMode ? "Send Money" : "Receive Money")
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.white)
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.8))
                 }
-                .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 18)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 20)
                 .background(
-                    RoundedRectangle(cornerRadius: 14)
+                    RoundedRectangle(cornerRadius: 20)
                         .fill(Color.blue)
+                        .shadow(color: .blue.opacity(0.3), radius: 15, x: 0, y: 8)
                 )
             }
-            .buttonStyle(PlainButtonStyle())
+            .buttonStyle(ScaleButtonStyle())
             
-            // Secondary Action Button - Share payment link
-            Button(action: {
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                    deepLinkService.sharePaymentRequest(
-                        amount: amount,
-                        currency: currency,
-                        message: message
+            // Secondary Action Buttons Row
+            HStack(spacing: 16) {
+                // Share payment link button
+                Button(action: {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                        deepLinkService.sharePaymentRequest(
+                            amount: amount,
+                            currency: currency,
+                            message: message
+                        )
+                    }
+                }) {
+                    VStack(spacing: 8) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.blue.opacity(0.1))
+                                .frame(width: 44, height: 44)
+                            
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundColor(.blue)
+                        }
+                        
+                        Text("Share Link")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.blue)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color.blue.opacity(0.05))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(Color.blue.opacity(0.2), lineWidth: 1)
+                            )
                     )
                 }
-            }) {
-                HStack(spacing: 8) {
-                    Image(systemName: "square.and.arrow.up")
-                        .font(.system(size: 16, weight: .medium))
-                    
-                    Text("Share Payment Link")
-                        .font(.system(size: 17, weight: .medium))
+                .buttonStyle(ScaleButtonStyle())
+                
+                // Go Back button
+                Button(action: {
+                    tapToSendService.disconnect()
+                    dismiss()
+                }) {
+                    VStack(spacing: 8) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.secondary.opacity(0.1))
+                                .frame(width: 44, height: 44)
+                            
+                            Image(systemName: "arrow.left")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Text("Go Back")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color.secondary.opacity(0.05))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                            )
+                    )
                 }
-                .foregroundColor(.blue)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(Color.blue.opacity(0.1))
-                )
+                .buttonStyle(ScaleButtonStyle())
             }
-            .buttonStyle(PlainButtonStyle())
-            
-            // Go Back Button
-            Button(action: {
-                tapToSendService.disconnect()
-                dismiss()
-            }) {
-                HStack(spacing: 8) {
-                    Image(systemName: "arrow.left")
-                        .font(.system(size: 16, weight: .medium))
-                    
-                    Text("Go Back")
-                        .font(.system(size: 17, weight: .medium))
-                }
-                .foregroundColor(.secondary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(Color.secondary.opacity(0.1))
-                )
-            }
-            .buttonStyle(PlainButtonStyle())
         }
     }
     
@@ -431,9 +499,9 @@ struct TapToSendView: View {
         if connectionEstablished {
             return "checkmark.circle.fill"
         } else if isScanning {
-            return "iphone.radiowaves.left.and.right"
+            return "wave.3.right"
         } else {
-            return "iphone"
+            return "hand.tap.fill"
         }
     }
     
@@ -2050,6 +2118,15 @@ struct PaymentConfirmationView: View {
         formatter.numberStyle = .currency
         formatter.currencyCode = "MXN"
         return formatter.string(from: NSNumber(value: amount)) ?? "$0.00"
+    }
+}
+
+// MARK: - Custom Button Style
+struct ScaleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
+            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
     }
 }
 

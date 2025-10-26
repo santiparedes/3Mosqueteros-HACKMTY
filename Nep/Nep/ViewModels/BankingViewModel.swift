@@ -156,6 +156,10 @@ class BankingViewModel: ObservableObject {
         return cards.first { $0.isActive }
     }
     
+    func getCreditCard() -> Card? {
+        return cards.first { $0.type.lowercased() == "credit" }
+    }
+    
     func createNewCard(for accountId: String) {
         let newCard = Card(
             id: UUID().uuidString,

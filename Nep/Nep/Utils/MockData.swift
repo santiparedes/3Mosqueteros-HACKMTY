@@ -141,4 +141,17 @@ struct MockData {
             description: "Subscription"
         )
     ]
+    
+    static let sampleCreditOffer = CreditOffer(
+        customerId: "1",
+        pd90Score: 0.15,  // 15% probability of default
+        riskTier: "Near Prime",
+        creditLimit: 8000.0,
+        apr: 0.1899,  // 18.99% APR
+        msiEligible: true,
+        msiMonths: 12,
+        explanation: "Based on your financial profile, you qualify for a credit card with competitive rates and MSI benefits.",
+        confidence: 0.85,
+        generatedAt: "2024-01-15T10:30:00Z"
+    )
 }
