@@ -101,6 +101,7 @@ class SupabaseService: ObservableObject {
     }
     
     func getAccount(by accountId: String) async throws -> Account? {
+        print("🔄 SupabaseService: Looking up account with ID: \(accountId)")
         isLoading = true
         defer { isLoading = false }
         
@@ -113,8 +114,16 @@ class SupabaseService: ObservableObject {
                 .execute()
                 .value
             
-            return response.map { DatabaseMappingService.mapToAccount(from: $0) }
+            if let dbAccount = response {
+                let account = DatabaseMappingService.mapToAccount(from: dbAccount)
+                print("✅ SupabaseService: Account found: \(account.nickname) with balance: $\(account.balance)")
+                return account
+            } else {
+                print("❌ SupabaseService: No account found with ID: \(accountId)")
+                return nil
+            }
         } catch {
+            print("❌ SupabaseService: Error looking up account \(accountId): \(error)")
             errorMessage = "Failed to get account: \(error.localizedDescription)"
             return nil
         }

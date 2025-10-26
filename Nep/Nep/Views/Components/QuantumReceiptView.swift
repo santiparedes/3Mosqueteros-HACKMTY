@@ -6,6 +6,9 @@ struct QuantumReceiptView: View {
     @State private var verificationResult: Bool?
     @State private var showVerificationDetails = false
     @State private var showShareSheet = false
+    @State private var showImageShareSheet = false
+    @State private var receiptImage: UIImage?
+    @Environment(\.dismiss) private var dismiss
     
     private let receiptService = QuantumReceiptService.shared
     
@@ -30,17 +33,38 @@ struct QuantumReceiptView: View {
                         merkleProofDetails
                     }
                     
-                    // Action Buttons
-                    actionButtons
                 }
                 .padding()
             }
+            .background(Color.white)
             .navigationTitle("Quantum Receipt")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
+                        dismiss()
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.left")
+                                .font(.system(size: 16, weight: .medium))
+                            Text("Back")
+                                .font(.system(size: 16, weight: .medium))
+                        }
+                        .foregroundColor(.primary)
+                    }
+                }
+                
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Share") {
-                        showShareSheet = true
+                    Menu {
+                        Button(action: {
+                            generateReceiptImage()
+                        }) {
+                            Label("Download as Image", systemImage: "photo")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.primary)
                     }
                 }
             }
@@ -48,92 +72,136 @@ struct QuantumReceiptView: View {
         .sheet(isPresented: $showShareSheet) {
             ShareSheet(items: [receiptText])
         }
+        .sheet(isPresented: $showImageShareSheet) {
+            if let image = receiptImage {
+                ImageShareSheet(image: image)
+            }
+        }
     }
     
     // MARK: - Receipt Header
     private var receiptHeader: some View {
-        VStack(spacing: 12) {
-            // Quantum Shield Icon
-            Image(systemName: "shield.checkered")
-                .font(.system(size: 40))
-                .foregroundColor(.primary)
-            
-            Text("Quantum-Resistant Receipt")
-                .font(.title3)
-                .fontWeight(.semibold)
-            
-            Text("Verified & Future-Proof")
-                .font(.caption)
-                .foregroundColor(.secondary)
-            
-            // Status Badge
-            HStack {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundColor(.green)
-                Text("Transaction Confirmed")
-                    .fontWeight(.medium)
+        VStack(spacing: 16) {
+            // NEP Logo with circle background like other screens
+            ZStack {
+                Circle()
+                    .fill(Color.nepBlue)
+                    .frame(width: 60, height: 60)
+                
+                Text("NEP")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.white)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(Color.green.opacity(0.1))
-            .cornerRadius(12)
+            
+            // Title
+            Text("Comprobante de Transferencia")
+                .font(.system(size: 24, weight: .bold))
+                .foregroundColor(.black)
+            
+            // Authorization details
+            Text("Autorización \(DateFormatter.receiptDate.string(from: receipt.displayInfo.timestamp))")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(.gray)
         }
         .padding()
-        .background(Color.gray.opacity(0.05))
-        .cornerRadius(12)
     }
     
     // MARK: - Transaction Details
     private var transactionDetails: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Transaction Details")
-                .font(.headline)
-                .fontWeight(.semibold)
+        VStack(spacing: 20) {
+            // Amount
+            HStack {
+                Text("Monto")
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundColor(.black)
+                Spacer()
+                Text("$\(receipt.displayInfo.amount) \(receipt.displayInfo.currency)")
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundColor(.black)
+            }
             
-            VStack(spacing: 12) {
-                detailRow(title: "Amount", value: "$\(receipt.displayInfo.amount) \(receipt.displayInfo.currency)")
-                detailRow(title: "From", value: receipt.displayInfo.fromAccount)
-                detailRow(title: "To", value: receipt.displayInfo.toAccount)
-                detailRow(title: "Date", value: DateFormatter.receiptDate.string(from: receipt.displayInfo.timestamp))
-                detailRow(title: "Transaction ID", value: receipt.displayInfo.transactionId)
+            // Concept (in light gray box like Nu)
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Concepto")
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundColor(.black)
+                
+                Text("NepPay Transfer")
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundColor(.black)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(8)
+            }
+            
+            // Transfer Type
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text("Tipo de transferencia")
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundColor(.black)
+                    Spacer()
+                    Text("Quantum-Secured")
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundColor(.black)
+                }
+                Text("Transferencia segura con criptografía post-cuántica")
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundColor(.gray)
+            }
+            
+            // Reference Number
+            HStack {
+                Text("Número de referencia")
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundColor(.black)
+                Spacer()
+                Text(receipt.displayInfo.transactionId)
+                    .font(.system(size: 16, weight: .regular, design: .monospaced))
+                    .foregroundColor(.black)
             }
         }
         .padding()
-        .background(Color.gray.opacity(0.05))
-        .cornerRadius(12)
     }
     
     // MARK: - Quantum Security Section
     private var quantumSecuritySection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Security Features")
-                .font(.headline)
-                .fontWeight(.semibold)
+            Text("Seguridad Avanzada")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundColor(.black)
             
-            VStack(spacing: 8) {
-                securityFeatureRow(
-                    icon: "lock.shield",
-                    title: "Post-Quantum Signature",
-                    description: "CRYSTALS-Dilithium",
-                    value: receipt.displayInfo.quantumSignature,
-                    color: .primary
-                )
+            VStack(spacing: 12) {
+                HStack {
+                    Text("Tipo de Seguridad")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.black)
+                    Spacer()
+                    Text("Protección Futura")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.green)
+                }
                 
-                securityFeatureRow(
-                    icon: "tree",
-                    title: "Merkle Tree Proof",
-                    description: "Cryptographic Integrity",
-                    value: receipt.displayInfo.merkleRoot,
-                    color: .primary
-                )
+                HStack {
+                    Text("Verificación")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.black)
+                    Spacer()
+                    Text("Confirmada")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.green)
+                }
                 
-                securityFeatureRow(
-                    icon: "cube.box",
-                    title: "Block Index",
-                    description: "Blockchain Confirmation",
-                    value: "#\(receipt.displayInfo.blockIndex)",
-                    color: .primary
-                )
+                HStack {
+                    Text("Número de Transacción")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.black)
+                    Spacer()
+                    Text(String(receipt.displayInfo.transactionId.prefix(8)))
+                        .font(.system(size: 16, weight: .medium, design: .monospaced))
+                        .foregroundColor(.black)
+                }
             }
         }
         .padding()
@@ -144,93 +212,57 @@ struct QuantumReceiptView: View {
     // MARK: - Verification Section
     private var verificationSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Verification")
-                .font(.headline)
-                .fontWeight(.semibold)
+            Text("Estado de la Transacción")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundColor(.black)
             
             VStack(spacing: 12) {
-                // Offline Verification Status
+                // Status Card
                 HStack {
-                    Image(systemName: "wifi.slash")
-                        .foregroundColor(.primary)
-                    VStack(alignment: .leading) {
-                        Text("Offline Verifiable")
-                            .fontWeight(.medium)
-                        Text("Works without internet connection")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    Spacer()
                     Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 24))
                         .foregroundColor(.green)
-                }
-                .padding()
-                .background(Color.gray.opacity(0.05))
-                .cornerRadius(8)
-                
-                // Online Verification
-                HStack {
-                    Image(systemName: "wifi")
-                        .foregroundColor(.primary)
-                    VStack(alignment: .leading) {
-                        Text("Online Verification")
-                            .fontWeight(.medium)
-                        Text("Real-time quantum signature validation")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    Spacer()
                     
-                    if isVerifying {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                    } else if let verified = verificationResult {
-                        Image(systemName: verified ? "checkmark.circle.fill" : "xmark.circle.fill")
-                            .foregroundColor(verified ? .green : .red)
-                    } else {
-                        Button("Verify") {
-                            verifyReceipt()
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Transferencia Exitosa")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.black)
+                        
+                        Text("Tu dinero fue enviado correctamente")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.gray)
                     }
+                    
+                    Spacer()
                 }
                 .padding()
-                .background(Color.gray.opacity(0.05))
-                .cornerRadius(8)
+                .background(Color.green.opacity(0.1))
+                .cornerRadius(12)
+                
+               
             }
         }
         .padding()
-        .background(Color.gray.opacity(0.05))
-        .cornerRadius(12)
     }
     
     // MARK: - Merkle Proof Details
     private var merkleProofDetails: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Merkle Proof Details")
-                .font(.headline)
-                .fontWeight(.semibold)
+            Text("Detalles de Seguridad")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundColor(.black)
             
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Proof Steps:")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Información Técnica:")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.black)
                 
-                ForEach(Array(receipt.merkleProof.enumerated()), id: \.offset) { index, proofItem in
-                    HStack {
-                        Text("Step \(index + 1):")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Text("\(proofItem.dir) - \(String(proofItem.hash.prefix(8)))...")
-                            .font(.caption)
-                            .font(.system(.caption, design: .monospaced))
-                    }
+                VStack(spacing: 8) {
+                    detailRow(title: "Hash de Transacción", value: String(receipt.displayInfo.merkleRoot.prefix(12)) + "...")
+                    detailRow(title: "Número de Bloque", value: "#\(receipt.displayInfo.blockIndex)")
+                    detailRow(title: "Fecha de Sellado", value: DateFormatter.receiptDate.string(from: receipt.displayInfo.timestamp))
                 }
             }
-            .padding()
-            .background(Color.gray.opacity(0.05))
-            .cornerRadius(8)
         }
         .padding()
         .background(Color.gray.opacity(0.05))
@@ -245,11 +277,13 @@ struct QuantumReceiptView: View {
             }) {
                 HStack {
                     Image(systemName: showVerificationDetails ? "eye.slash" : "eye")
-                    Text(showVerificationDetails ? "Hide Details" : "Show Proof Details")
+                    Text(showVerificationDetails ? "Ocultar Detalles" : "Ver Detalles Técnicos")
                 }
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(.nepBlue)
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(Color.gray.opacity(0.1))
+                .background(Color.nepBlue.opacity(0.1))
                 .cornerRadius(12)
             }
             
@@ -258,29 +292,20 @@ struct QuantumReceiptView: View {
             }) {
                 HStack {
                     Image(systemName: "square.and.arrow.up")
-                    Text("Share Receipt")
+                    Text("Compartir Comprobante")
                 }
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(Color.gray.opacity(0.1))
+                .background(Color.nepBlue)
                 .cornerRadius(12)
             }
         }
+        .padding()
     }
     
     // MARK: - Helper Views
-    private func detailRow(title: String, value: String) -> some View {
-        HStack {
-            Text(title)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-            Spacer()
-            Text(value)
-                .font(.subheadline)
-                .fontWeight(.medium)
-        }
-    }
-    
     private func securityFeatureRow(icon: String, title: String, description: String, value: String, color: Color) -> some View {
         HStack {
             Image(systemName: icon)
@@ -352,6 +377,195 @@ struct QuantumReceiptView: View {
         Generated by NEP Quantum Wallet
         """
     }
+    
+    // MARK: - Image Generation
+    private func generateReceiptImage() {
+        let renderer = ImageRenderer(content: receiptImageContent)
+        renderer.scale = 3.0 // High resolution
+        
+        if let image = renderer.uiImage {
+            // Convert to PNG data to ensure PNG format
+            if let pngData = image.pngData() {
+                receiptImage = UIImage(data: pngData)
+            } else {
+                receiptImage = image
+            }
+            showImageShareSheet = true
+        }
+    }
+    
+    private var receiptImageContent: some View {
+        VStack(spacing: 32) {
+            // Header
+            VStack(spacing: 16) {
+                // NEP Logo with circle background like other screens
+                ZStack {
+                    Circle()
+                        .fill(Color.nepBlue)
+                        .frame(width: 60, height: 60)
+                    
+                    Text("NEP")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(.white)
+                }
+                
+                // Title
+                Text("Comprobante de Transferencia")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.black)
+                
+                // Authorization details
+                Text("Autorización \(DateFormatter.receiptDate.string(from: receipt.displayInfo.timestamp))")
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundColor(.gray)
+            }
+            
+            // Transaction Details Section
+            VStack(spacing: 20) {
+                // Amount
+                HStack {
+                    Text("Monto")
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundColor(.black)
+                    Spacer()
+                    Text("$\(receipt.displayInfo.amount) \(receipt.displayInfo.currency)")
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundColor(.black)
+                }
+                
+                // Concept (in light gray box like Nu)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Concepto")
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundColor(.black)
+                    
+                    Text("NepPay Transfer")
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color.gray.opacity(0.1))
+                        .cornerRadius(8)
+                }
+                
+                // Transfer Type
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("Tipo de transferencia")
+                            .font(.system(size: 16, weight: .regular))
+                            .foregroundColor(.black)
+                        Spacer()
+                        Text("Quantum-Secured")
+                            .font(.system(size: 16, weight: .regular))
+                            .foregroundColor(.black)
+                    }
+                    Text("Transferencia segura con criptografía post-cuántica")
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundColor(.gray)
+                }
+                
+                // Reference Number
+                HStack {
+                    Text("Número de referencia")
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundColor(.black)
+                    Spacer()
+                    Text(receipt.displayInfo.transactionId)
+                        .font(.system(size: 16, weight: .regular, design: .monospaced))
+                        .foregroundColor(.black)
+                }
+            }
+            
+            // Quantum Security Section
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Seguridad Avanzada")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(.black)
+                
+                VStack(spacing: 12) {
+                    HStack {
+                        Text("Tipo de Seguridad")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.black)
+                        Spacer()
+                        Text("Protección Futura")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.green)
+                    }
+                    
+                    HStack {
+                        Text("Verificación")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.black)
+                        Spacer()
+                        Text("Confirmada")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.green)
+                    }
+                    
+                    HStack {
+                        Text("Número de Transacción")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.black)
+                        Spacer()
+                        Text(String(receipt.displayInfo.transactionId.prefix(8)))
+                            .font(.system(size: 16, weight: .medium, design: .monospaced))
+                            .foregroundColor(.black)
+                    }
+                }
+            }
+            .padding()
+            .background(Color.gray.opacity(0.05))
+            .cornerRadius(12)
+            
+            // Footer
+            VStack(spacing: 8) {
+                Text("Este comprobante está protegido con tecnología avanzada,")
+                    .font(.system(size: 12, weight: .regular))
+                    .foregroundColor(.gray)
+                    .multilineTextAlignment(.center)
+                
+                Text("garantizando su validez a largo plazo.")
+                    .font(.system(size: 12, weight: .regular))
+                    .foregroundColor(.gray)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .padding(24)
+        .background(Color.white)
+        .cornerRadius(0)
+        .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+    }
+    
+    private func detailRow(title: String, value: String) -> some View {
+        HStack {
+            Text(title)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.secondary)
+                .frame(width: 100, alignment: .leading)
+            
+            Spacer()
+            
+            Text(value)
+                .font(.system(size: 14, weight: .medium, design: .monospaced))
+                .foregroundColor(.primary)
+                .multilineTextAlignment(.trailing)
+        }
+    }
+    
+    private func securityFeatureRow(title: String, value: String, isValid: Bool) -> some View {
+        HStack {
+            Text(title)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.secondary)
+            
+            Spacer()
+            
+            Text(value)
+                .font(.system(size: 14, weight: .medium, design: .monospaced))
+                .foregroundColor(isValid ? .green : .red)
+        }
+    }
 }
 
 // MARK: - Date Formatter Extension
@@ -370,6 +584,31 @@ struct ShareSheet: UIViewControllerRepresentable {
     
     func makeUIViewController(context: Context) -> UIActivityViewController {
         UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+    
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+// MARK: - Image Share Sheet
+struct ImageShareSheet: UIViewControllerRepresentable {
+    let image: UIImage
+    
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        // Ensure we're sharing as PNG
+        var items: [Any] = []
+        
+        if let pngData = image.pngData() {
+            items.append(pngData)
+        } else {
+            items.append(image)
+        }
+        
+        let activityViewController = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        
+        // Set the subject for email sharing
+        activityViewController.setValue("NEP Quantum Receipt", forKey: "subject")
+        
+        return activityViewController
     }
     
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}

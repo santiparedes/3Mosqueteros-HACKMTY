@@ -187,7 +187,7 @@ struct EnhancedPaymentSentSuccessView: View {
                 showConfetti = true
             }
         }
-        .sheet(isPresented: $showReceipt) {
+        .fullScreenCover(isPresented: $showReceipt) {
             if let receipt = generatedReceipt {
                 QuantumReceiptView(receipt: receipt)
             }

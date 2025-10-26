@@ -35,10 +35,19 @@ class TransactionProcessor: ObservableObject {
             print("   Amount: $\(amount)")
             
             // Step 1: Validate accounts exist
-            guard let fromAccount = try await supabaseService.getAccount(by: fromAccountId),
-                  let toAccount = try await supabaseService.getAccount(by: toAccountId) else {
+            print("🔄 TransactionProcessor: Looking up sender account: \(fromAccountId)")
+            guard let fromAccount = try await supabaseService.getAccount(by: fromAccountId) else {
+                print("❌ TransactionProcessor: Sender account not found: \(fromAccountId)")
                 throw TransactionError.accountNotFound
             }
+            print("✅ TransactionProcessor: Sender account found: \(fromAccount.nickname)")
+            
+            print("🔄 TransactionProcessor: Looking up receiver account: \(toAccountId)")
+            guard let toAccount = try await supabaseService.getAccount(by: toAccountId) else {
+                print("❌ TransactionProcessor: Receiver account not found: \(toAccountId)")
+                throw TransactionError.accountNotFound
+            }
+            print("✅ TransactionProcessor: Receiver account found: \(toAccount.nickname)")
             
             // Step 2: Check sufficient funds
             if fromAccount.balance < amount {
