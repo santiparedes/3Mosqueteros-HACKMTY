@@ -15,6 +15,9 @@ struct AIChatView: View {
     @State private var userPhoto: UIImage?
     @State private var currentOCRResults: OCRResults
     @State private var isCorrectingData = false
+    @State private var typingText = ""
+    @State private var currentTypingMessage = ""
+    @State private var isTextFieldFocused = false
     
     let ocrResults: OCRResults
     let onDataConfirmed: (OCRResults) -> Void
@@ -51,8 +54,8 @@ struct AIChatView: View {
                 // Main content area
                 VStack(spacing: 32) {
                     // Text input field (when in keyboard mode) - MOVED TO TOP
-                    if !isListening && currentMessage.isEmpty {
-                        TextField("Escribe tu respuesta...", text: $currentMessage)
+                    if !isListening {
+                        TextField("Escribe tu respuesta...", text: $currentMessage, axis: .vertical)
                             .font(.system(size: 24, weight: .bold))
                             .foregroundStyle(
                                 LinearGradient(
@@ -62,10 +65,17 @@ struct AIChatView: View {
                                 )
                             )
                             .multilineTextAlignment(.center)
+                            .lineLimit(1...10)
                             .padding(.horizontal, 20)
                             .padding(.vertical, 16)
                             .padding(.horizontal, 40)
                             .padding(.top, 20)
+                            .onTapGesture {
+                                // Clear the field when user taps it
+                                if !currentMessage.isEmpty {
+                                    currentMessage = ""
+                                }
+                            }
                             .onSubmit {
                                 sendMessage()
                             }
@@ -73,47 +83,35 @@ struct AIChatView: View {
 
                     Spacer()
                     
-                    // User query/typing display with gradient text
-                    if !currentMessage.isEmpty {
-                        Text(currentMessage)
-                            .font(.system(size: 32, weight: .bold))
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 20)
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [.white.opacity(0.9), .white.opacity(0.7), .white.opacity(0.5)],
-                                    startPoint: .bottomLeading,
-                                    endPoint: .topTrailing
-                                )
-                            )
-                    } else if let lastUserMessage = messages.last(where: { $0.isUser }) {
-                        Text(lastUserMessage.text)
-                            .font(.system(size: 32, weight: .bold))
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 20)
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [.white.opacity(0.9), .white.opacity(0.7), .white.opacity(0.5)],
-                                    startPoint: .bottomLeading,
-                                    endPoint: .topTrailing
-                                )
-                            )
-                    }
-                    
                     // AI response area with gradient text
                     if isTyping {
-                        Text("Pensando...")
-                            .font(.system(size: 20, weight: .medium))
-                            .padding(.vertical, 12)
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [.white.opacity(0.8), .white.opacity(0.6)],
-                                    startPoint: .bottomLeading,
-                                    endPoint: .topTrailing
+                        if !typingText.isEmpty {
+                            // Show typing animation
+                            Text(typingText)
+                                .font(.system(size: 38, weight: .medium))
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 20)
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [.white.opacity(0.8), .white.opacity(0.6), .white.opacity(0.4)],
+                                        startPoint: .bottomLeading,
+                                        endPoint: .topTrailing
+                                    )
                                 )
-                            )
+                        } else {
+                            // Show thinking state
+                            Text("Pensando...")
+                                .font(.system(size: 20, weight: .medium))
+                                .padding(.vertical, 12)
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [.white.opacity(0.8), .white.opacity(0.6)],
+                                        startPoint: .bottomLeading,
+                                        endPoint: .topTrailing
+                                    )
+                                )
+                        }
                     } else if let lastAIMessage = messages.last(where: { !$0.isUser }) {
                         Text(lastAIMessage.text)
                             .font(.system(size: 38, weight: .medium))
@@ -127,6 +125,11 @@ struct AIChatView: View {
                                     endPoint: .topTrailing
                                 )
                             )
+                    }
+                    
+                    // Data confirmation card
+                    if showDataCard {
+                        dataConfirmationCard
                     }
 
                     Spacer()
@@ -173,6 +176,7 @@ struct AIChatView: View {
             HStack(spacing: 0) {
                 Button(action: {
                     // Switch to voice mode
+                    print("DEBUG: Voice mode button tapped")
                     isListening = true
                     startListening()
                 }) {
@@ -194,6 +198,7 @@ struct AIChatView: View {
                 
                 Button(action: {
                     // Switch to keyboard mode
+                    print("DEBUG: Keyboard mode button tapped")
                     isListening = false
                     stopListening()
                 }) {
@@ -223,11 +228,15 @@ struct AIChatView: View {
             
             // Right side - Main action button (moved to corner)
             Button(action: {
+                print("DEBUG: Main action button tapped")
                 if isListening {
+                    print("DEBUG: Currently listening, stopping...")
                     stopListening()
                 } else if !currentMessage.isEmpty {
+                    print("DEBUG: Has message, sending...")
                     sendMessage()
                 } else {
+                    print("DEBUG: No message, starting to listen...")
                     startListening()
                 }
             }) {
@@ -357,10 +366,15 @@ struct AIChatView: View {
             HStack(spacing: 12) {
                 Button(action: {
                     // User says data is wrong
-                    addUserMessage("No, hay errores en los datos")
+                    print("DEBUG: 'Hay errores' button tapped")
+                    currentMessage = "No, hay errores en los datos"
                     showDataCard = false
                     isCorrectingData = true
-                    processUserCorrection()
+                    
+                    // Auto-send after a brief delay
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        sendMessage()
+                    }
                 }) {
                     Text("Hay errores")
                         .font(.system(size: 16, weight: .semibold))
@@ -373,11 +387,14 @@ struct AIChatView: View {
                 
                 Button(action: {
                     // User confirms data is correct
-                    addUserMessage("Sí, los datos están correctos")
-                    isDataConfirmed = true
+                    print("DEBUG: 'Está correcto' button tapped")
+                    currentMessage = "Sí, los datos están correctos"
                     showDataCard = false
-                    onDataConfirmed(currentOCRResults)
-                    processDataConfirmation()
+                    
+                    // Auto-send after a brief delay
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        sendMessage()
+                    }
                 }) {
                     Text("Está correcto")
                         .font(.system(size: 16, weight: .semibold))
@@ -475,11 +492,9 @@ struct AIChatView: View {
         )
         messages.append(welcomeMessage)
         
-        // Show data card after a brief delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            withAnimation(.easeInOut(duration: 0.3)) {
-                showDataCard = true
-            }
+        // Show data card immediately
+        withAnimation(.easeInOut(duration: 0.3)) {
+            showDataCard = true
         }
     }
     
@@ -491,29 +506,56 @@ struct AIChatView: View {
             timestamp: Date()
         )
         messages.append(message)
-        currentMessage = ""
+        // Don't clear the text field - keep it for user to see/edit
     }
     
     private func addAIMessage(_ text: String) {
         isTyping = true
+        currentTypingMessage = text
+        typingText = ""
         
-        // Simulate typing delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            let message = ChatMessage(
-                id: UUID(),
-                text: text,
-                isUser: false,
-                timestamp: Date()
-            )
-            messages.append(message)
-            isTyping = false
+        // Start typing animation
+        startTypingAnimation(text: text)
+    }
+    
+    private func startTypingAnimation(text: String) {
+        let characters = Array(text)
+        var currentIndex = 0
+        
+        func typeNextCharacter() {
+            if currentIndex < characters.count {
+                typingText += String(characters[currentIndex])
+                currentIndex += 1
+                
+                // Type at different speeds for different characters
+                let delay = characters[currentIndex - 1] == " " ? 0.1 : 0.05
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                    typeNextCharacter()
+                }
+            } else {
+                // Typing complete, add to messages after a pause
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    let message = ChatMessage(
+                        id: UUID(),
+                        text: text,
+                        isUser: false,
+                        timestamp: Date()
+                    )
+                    messages.append(message)
+                    isTyping = false
+                    typingText = ""
+                    currentTypingMessage = ""
+                }
+            }
         }
+        
+        typeNextCharacter()
     }
     
     private func processDataConfirmation() {
         addAIMessage("¡Perfecto! Los datos están correctos. Ahora necesito una foto tuya para completar tu perfil.")
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
             showPhotoCapture = true
         }
     }
@@ -523,34 +565,73 @@ struct AIChatView: View {
     }
     
     private func startListening() {
+        print("DEBUG: startListening() called")
         isListening = true
-        // TODO: Implement voice recognition
-        // For now, simulate voice input
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        print("DEBUG: isListening set to true")
+        
+        // TODO: Implement real voice recognition
+        // For now, simulate voice input after 3 seconds for testing
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            print("DEBUG: Simulating voice input after 3 seconds")
             isListening = false
-            // Simulate voice input
-            addUserMessage("Los datos están correctos")
-            processDataConfirmation()
+            print("DEBUG: isListening set to false")
+            
+            // Simulate what the user said - put it in the text input field
+            let simulatedVoiceInput = "Los datos están correctos"
+            print("DEBUG: Simulated voice input: '\(simulatedVoiceInput)'")
+            currentMessage = simulatedVoiceInput
+            
+            // Add confirmation step before proceeding
+            addAIMessage("¿Estás seguro de que los datos están correctos? Responde 'sí' para continuar o 'no' para corregir.")
         }
     }
     
     private func stopListening() {
+        print("DEBUG: stopListening() called")
         isListening = false
+        print("DEBUG: isListening set to false")
     }
     
     private func sendMessage() {
-        guard !currentMessage.isEmpty else { return }
+        guard !currentMessage.isEmpty else { 
+            print("DEBUG: sendMessage() called but currentMessage is empty")
+            return 
+        }
         
+        print("DEBUG: sendMessage() called with message: '\(currentMessage)'")
         addUserMessage(currentMessage)
+        
+        // Check for confirmation responses
+        let lowercasedMessage = currentMessage.lowercased()
+        print("DEBUG: Processing message: '\(lowercasedMessage)'")
+        
+        if lowercasedMessage.contains("sí") || lowercasedMessage.contains("si") || lowercasedMessage.contains("yes") {
+            print("DEBUG: User confirmed data is correct")
+            isDataConfirmed = true
+            addAIMessage("¡Perfecto! Los datos están confirmados. Ahora necesito una foto tuya para completar tu perfil.")
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
+                print("DEBUG: Showing photo capture after confirmation")
+                showPhotoCapture = true
+            }
+            return
+        } else if lowercasedMessage.contains("no") || lowercasedMessage.contains("hay errores") {
+            print("DEBUG: User says data has errors")
+            isCorrectingData = true
+            addAIMessage("Entiendo, hay errores en los datos. Por favor, dime qué información está incorrecta y cómo debería ser.")
+            return
+        }
         
         // Process user input with Gemini AI
         Task {
             if isCorrectingData {
+                print("DEBUG: Processing data correction")
                 // Handle data correction
                 let correctionResponse = await geminiService.processDataCorrection(currentMessage, currentData: currentOCRResults)
                 
                 await MainActor.run {
                     if correctionResponse.hasChanges {
+                        print("DEBUG: Data correction has changes")
                         currentOCRResults = correctionResponse.correctedData
                         addAIMessage("Perfecto, he actualizado los datos. ¿Está correcto ahora?")
                         
@@ -562,10 +643,12 @@ struct AIChatView: View {
                             }
                         }
                     } else {
+                        print("DEBUG: Data correction no changes")
                         addAIMessage(correctionResponse.message)
                     }
                 }
             } else {
+                print("DEBUG: Processing regular conversation")
                 // Handle regular conversation
                 let context = OnboardingContext(
                     currentStep: .dataVerification,
@@ -581,9 +664,11 @@ struct AIChatView: View {
                 let response = await geminiService.processUserResponse(currentMessage, context: context)
                 
                 await MainActor.run {
+                    print("DEBUG: AI response: '\(response.message)'")
                     addAIMessage(response.message)
                     
                     if response.nextAction == .confirm && isDataConfirmed {
+                        print("DEBUG: AI confirmed data, calling onDataConfirmed")
                         onDataConfirmed(currentOCRResults)
                     }
                 }
