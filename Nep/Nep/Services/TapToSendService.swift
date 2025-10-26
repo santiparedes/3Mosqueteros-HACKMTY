@@ -639,15 +639,21 @@ extension TapToSendService: MCSessionDelegate {
     }
     
     private func handlePaymentResponse(_ response: PaymentResponse, from peer: MCPeerID) {
+        print("🔄 TapToSendService: Received payment response from \(peer.displayName)")
+        print("🔄 TapToSendService: Response accepted: \(response.accepted)")
+        
         DispatchQueue.main.async {
             self.paymentResponse = response
             
             if response.accepted {
+                print("✅ TapToSendService: Payment accepted, setting paymentSent = true")
                 self.paymentSent = true
                 // Handle successful payment
                 if let transactionId = response.transactionId {
+                    print("✅ TapToSendService: Transaction ID: \(transactionId)")
                 }
             } else {
+                print("❌ TapToSendService: Payment rejected, setting paymentSent = false")
                 self.paymentSent = false
             }
         }

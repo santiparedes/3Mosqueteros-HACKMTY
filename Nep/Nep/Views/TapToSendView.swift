@@ -108,10 +108,14 @@ struct TapToSendView: View {
                     amount: amount,
                     message: message,
                     onDone: {
+                        print("🔄 TapToSendView: PaymentConfirmationView onDone called")
                         showPaymentConfirmation = false
-                        dismiss()
+                        print("✅ TapToSendView: Setting showPaymentSentSuccess = true")
+                        showPaymentSentSuccess = true
                     }
                 )
+            } else {
+                Text("Payment response not available")
             }
         }
         .alert("Payment Success", isPresented: $showSuccessAlert) {
@@ -204,7 +208,7 @@ struct TapToSendView: View {
             )
         }
         .fullScreenCover(isPresented: $showPaymentReceived) {
-            PaymentReceivedView(
+            EnhancedPaymentReceivedView(
                 amount: amount,
                 message: message,
                 onDone: {
@@ -214,10 +218,11 @@ struct TapToSendView: View {
             )
         }
         .fullScreenCover(isPresented: $showPaymentSentSuccess) {
-            PaymentSentSuccessView(
+            EnhancedPaymentSentSuccessView(
                 amount: amount,
                 message: message,
                 onDone: {
+                    print("🔄 TapToSendView: EnhancedPaymentSentSuccessView onDone called")
                     showPaymentSentSuccess = false
                     dismiss()
                 }
@@ -244,10 +249,23 @@ struct TapToSendView: View {
             }
         }
         .onChange(of: tapToSendService.paymentSent) { sent in
+            print("🔄 TapToSendView: paymentSent changed to \(sent)")
             if sent {
+                print("✅ TapToSendView: Payment was sent successfully, showing confirmation sheet")
+                print("🔄 TapToSendView: paymentResponse is nil: \(tapToSendService.paymentResponse == nil)")
                 // Payment was sent successfully, show confirmation sheet
                 showPaymentConfirmation = true
                 paymentSent = true
+            }
+        }
+        .onChange(of: showPaymentConfirmation) { isShowing in
+            if isShowing {
+                print("🔄 TapToSendView: PaymentConfirmationView sheet is being presented")
+            }
+        }
+        .onChange(of: showPaymentSentSuccess) { isShowing in
+            if isShowing {
+                print("🔄 TapToSendView: EnhancedPaymentSentSuccessView fullScreenCover is being presented")
             }
         }
         .onAppear {
@@ -1166,27 +1184,60 @@ struct PaymentRequestView: View {
             
             print("✅ PaymentRequestView: Payment response sent")
             
-            // Show quantum receipt
+            // Show quantum receipt and dismiss payment request
             await MainActor.run {
                 self.generatedReceipt = quantumReceipt
                 self.showReceipt = true
                 self.isProcessing = false
+                // Dismiss the payment request view
+                dismiss()
             }
             
         } catch {
             print("❌ PaymentRequestView: Failed to process payment: \(error)")
             
-            // Send rejection response
-            if let peer = tapToSendService.connectedPeers.first(where: { $0.displayName == paymentRequest.from }) {
-                tapToSendService.sendPaymentResponse(
-                    to: peer,
-                    requestId: paymentRequest.id,
-                    accepted: false
+            // Try to generate quantum receipt even if payment failed
+            do {
+                print("🔄 PaymentRequestView: Attempting to generate quantum receipt despite payment error...")
+                let quantumReceipt = try await receiptService.generateReceiptForNepPayTransaction(
+                    transactionId: "error_recovery_\(Int.random(in: 100000...999999))",
+                    fromAccountId: getCurrentAccountId(),
+                    toAccountId: getReceiverAccountId(),
+                    amount: paymentRequest.amount,
+                    currency: paymentRequest.currency
                 )
-            }
-            
-            await MainActor.run {
-                isProcessing = false
+                
+                // Send rejection response
+                if let peer = tapToSendService.connectedPeers.first(where: { $0.displayName == paymentRequest.from }) {
+                    tapToSendService.sendPaymentResponse(
+                        to: peer,
+                        requestId: paymentRequest.id,
+                        accepted: false
+                    )
+                }
+                
+                // Show quantum receipt even for failed payment
+                await MainActor.run {
+                    self.generatedReceipt = quantumReceipt
+                    self.showReceipt = true
+                    self.isProcessing = false
+                    dismiss()
+                }
+                
+            } catch {
+                // Send rejection response
+                if let peer = tapToSendService.connectedPeers.first(where: { $0.displayName == paymentRequest.from }) {
+                    tapToSendService.sendPaymentResponse(
+                        to: peer,
+                        requestId: paymentRequest.id,
+                        accepted: false
+                    )
+                }
+                
+                await MainActor.run {
+                    isProcessing = false
+                    dismiss()
+                }
             }
         }
     }
@@ -1996,8 +2047,12 @@ struct PaymentSentSuccessView: View {
     let message: String
     let onDone: () -> Void
     
+    @StateObject private var receiptService = QuantumReceiptService.shared
     @State private var showConfetti = false
     @State private var isAnimating = false
+    @State private var showReceipt = false
+    @State private var generatedReceipt: QuantumReceipt?
+    @State private var isGeneratingReceipt = false
     
     var body: some View {
         NavigationView {

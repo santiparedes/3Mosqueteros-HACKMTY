@@ -55,15 +55,15 @@ struct QuantumReceiptView: View {
         VStack(spacing: 12) {
             // Quantum Shield Icon
             Image(systemName: "shield.checkered")
-                .font(.system(size: 60))
-                .foregroundColor(.blue)
+                .font(.system(size: 40))
+                .foregroundColor(.primary)
             
             Text("Quantum-Resistant Receipt")
-                .font(.title2)
-                .fontWeight(.bold)
+                .font(.title3)
+                .fontWeight(.semibold)
             
             Text("Verified & Future-Proof")
-                .font(.subheadline)
+                .font(.caption)
                 .foregroundColor(.secondary)
             
             // Status Badge
@@ -73,14 +73,14 @@ struct QuantumReceiptView: View {
                 Text("Transaction Confirmed")
                     .fontWeight(.medium)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
             .background(Color.green.opacity(0.1))
-            .cornerRadius(20)
+            .cornerRadius(12)
         }
         .padding()
-        .background(Color.blue.opacity(0.05))
-        .cornerRadius(16)
+        .background(Color.gray.opacity(0.05))
+        .cornerRadius(12)
     }
     
     // MARK: - Transaction Details
@@ -106,17 +106,17 @@ struct QuantumReceiptView: View {
     // MARK: - Quantum Security Section
     private var quantumSecuritySection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Quantum Security Features")
+            Text("Security Features")
                 .font(.headline)
                 .fontWeight(.semibold)
             
-            VStack(spacing: 12) {
+            VStack(spacing: 8) {
                 securityFeatureRow(
                     icon: "lock.shield",
                     title: "Post-Quantum Signature",
                     description: "CRYSTALS-Dilithium",
                     value: receipt.displayInfo.quantumSignature,
-                    color: .blue
+                    color: .primary
                 )
                 
                 securityFeatureRow(
@@ -124,7 +124,7 @@ struct QuantumReceiptView: View {
                     title: "Merkle Tree Proof",
                     description: "Cryptographic Integrity",
                     value: receipt.displayInfo.merkleRoot,
-                    color: .green
+                    color: .primary
                 )
                 
                 securityFeatureRow(
@@ -132,12 +132,12 @@ struct QuantumReceiptView: View {
                     title: "Block Index",
                     description: "Blockchain Confirmation",
                     value: "#\(receipt.displayInfo.blockIndex)",
-                    color: .purple
+                    color: .primary
                 )
             }
         }
         .padding()
-        .background(Color.blue.opacity(0.05))
+        .background(Color.gray.opacity(0.05))
         .cornerRadius(12)
     }
     
@@ -152,7 +152,7 @@ struct QuantumReceiptView: View {
                 // Offline Verification Status
                 HStack {
                     Image(systemName: "wifi.slash")
-                        .foregroundColor(.orange)
+                        .foregroundColor(.primary)
                     VStack(alignment: .leading) {
                         Text("Offline Verifiable")
                             .fontWeight(.medium)
@@ -165,13 +165,13 @@ struct QuantumReceiptView: View {
                         .foregroundColor(.green)
                 }
                 .padding()
-                .background(Color.orange.opacity(0.1))
+                .background(Color.gray.opacity(0.05))
                 .cornerRadius(8)
                 
                 // Online Verification
                 HStack {
                     Image(systemName: "wifi")
-                        .foregroundColor(.blue)
+                        .foregroundColor(.primary)
                     VStack(alignment: .leading) {
                         Text("Online Verification")
                             .fontWeight(.medium)
@@ -191,12 +191,12 @@ struct QuantumReceiptView: View {
                         Button("Verify") {
                             verifyReceipt()
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(.bordered)
                         .controlSize(.small)
                     }
                 }
                 .padding()
-                .background(Color.blue.opacity(0.1))
+                .background(Color.gray.opacity(0.05))
                 .cornerRadius(8)
             }
         }
@@ -224,7 +224,7 @@ struct QuantumReceiptView: View {
                             .foregroundColor(.secondary)
                         Text("\(proofItem.dir) - \(String(proofItem.hash.prefix(8)))...")
                             .font(.caption)
-                            .fontFamily(.monospaced)
+                            .font(.system(.caption, design: .monospaced))
                     }
                 }
             }
@@ -233,7 +233,7 @@ struct QuantumReceiptView: View {
             .cornerRadius(8)
         }
         .padding()
-        .background(Color.green.opacity(0.05))
+        .background(Color.gray.opacity(0.05))
         .cornerRadius(12)
     }
     
@@ -249,7 +249,7 @@ struct QuantumReceiptView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(Color.blue.opacity(0.1))
+                .background(Color.gray.opacity(0.1))
                 .cornerRadius(12)
             }
             
@@ -262,7 +262,7 @@ struct QuantumReceiptView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(Color.green.opacity(0.1))
+                .background(Color.gray.opacity(0.1))
                 .cornerRadius(12)
             }
         }
@@ -300,11 +300,11 @@ struct QuantumReceiptView: View {
             
             Text(value)
                 .font(.caption)
-                .fontFamily(.monospaced)
+                .font(.system(.caption, design: .monospaced))
                 .foregroundColor(color)
         }
         .padding()
-        .background(color.opacity(0.1))
+        .background(Color.gray.opacity(0.05))
         .cornerRadius(8)
     }
     

@@ -4,7 +4,7 @@ import CryptoKit
 class OnboardingService: ObservableObject {
     static let shared = OnboardingService()
     
-    private let baseURL = "http://localhost:8001" // Local backend for development
+    private let baseURL = "http://localhost:8000" // Local backend for development
     private let apiKey = "YOUR_API_KEY" // Replace with actual API key
     
     private init() {}

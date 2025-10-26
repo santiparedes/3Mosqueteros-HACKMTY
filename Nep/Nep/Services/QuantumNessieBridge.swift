@@ -7,7 +7,7 @@ class QuantumNessieBridge: ObservableObject {
     
     private let quantumAPI = QuantumAPI.shared
     private let nessieAPI = NessieAPI.shared
-    private let baseURL = "http://localhost:8001"
+    private let baseURL = "http://localhost:8000"
     private let session = URLSession.shared
     
     @Published var linkedWallets: [QuantumNessieWallet] = []
