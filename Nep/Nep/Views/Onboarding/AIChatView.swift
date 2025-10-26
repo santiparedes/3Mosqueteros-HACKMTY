@@ -176,6 +176,7 @@ struct AIChatView: View {
         .fullScreenCover(isPresented: $showWelcomeScreen) {
             WelcomeCompletionView(
                 userName: currentOCRResults.firstName,
+                userPhoto: nil,
                 onComplete: {
                     print("DEBUG: WelcomeCompletionView onComplete called")
                     showWelcomeScreen = false

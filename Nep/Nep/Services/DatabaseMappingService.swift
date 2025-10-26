@@ -216,14 +216,14 @@ class DatabaseMappingService {
     // MARK: - Transaction Mapping
     static func mapToTransaction(from dbTransaction: DatabaseTransaction) -> Transaction {
         return Transaction(
-            id: dbTransaction.transactionId,
-            type: dbTransaction.transactionType ?? "Unknown",
-            transactionDate: dbTransaction.transactionDate ?? "",
+            transaction_id: dbTransaction.transactionId,
+            account_id: dbTransaction.accountId,
+            transaction_type: dbTransaction.transactionType ?? "Unknown",
+            transaction_date: dbTransaction.transactionDate ?? "",
             status: dbTransaction.status ?? "completed",
-            payer: Payer(name: "Account", id: dbTransaction.accountId),
-            payee: Payee(name: dbTransaction.payeeId ?? "Unknown", id: dbTransaction.payeeId ?? ""),
-            amount: dbTransaction.amount,
             medium: dbTransaction.medium ?? "balance",
+            payee_id: dbTransaction.payeeId ?? "unknown",
+            amount: dbTransaction.amount,
             description: dbTransaction.description
         )
     }

@@ -988,7 +988,10 @@ struct PaymentRequestView: View {
     let paymentRequest: PaymentRequest
     @StateObject private var tapToSendService = TapToSendService.shared
     @StateObject private var quantumAPI = QuantumAPI.shared
+    @StateObject private var receiptService = QuantumReceiptService.shared
     @State private var isProcessing = false
+    @State private var showReceipt = false
+    @State private var generatedReceipt: QuantumReceipt?
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
@@ -1043,6 +1046,10 @@ struct PaymentRequestView: View {
                 // Action Buttons
                 VStack(spacing: 12) {
                     Button(action: {
+                        print("🔄 PaymentRequestView: Accept Payment button tapped")
+                        print("🔄 PaymentRequestView: isProcessing = \(isProcessing)")
+                        print("🔄 PaymentRequestView: paymentRequest = \(paymentRequest)")
+                        
                         Task {
                             await acceptPayment()
                         }
@@ -1061,10 +1068,11 @@ struct PaymentRequestView: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.green)
+                        .background(isProcessing ? Color.gray : Color.green)
                         .cornerRadius(12)
                     }
                     .disabled(isProcessing)
+                    .buttonStyle(PlainButtonStyle())
                     
                     Button(action: {
                         rejectPayment()
@@ -1097,10 +1105,19 @@ struct PaymentRequestView: View {
                 }
             }
         }
+        .sheet(isPresented: $showReceipt) {
+            if let receipt = generatedReceipt {
+                QuantumReceiptView(receipt: receipt)
+            }
+        }
     }
     
     private func acceptPayment() async {
-        isProcessing = true
+        print("🔄 PaymentRequestView: Starting acceptPayment...")
+        
+        await MainActor.run {
+            isProcessing = true
+        }
         
         do {
             // Find the peer who sent the request
@@ -1109,16 +1126,35 @@ struct PaymentRequestView: View {
             }
             
             guard let targetPeer = peer else {
-                print("Could not find peer for payment request")
-                isProcessing = false
+                print("❌ PaymentRequestView: Could not find peer for payment request")
+                await MainActor.run {
+                    isProcessing = false
+                }
                 return
             }
             
+            print("✅ PaymentRequestView: Found peer: \(targetPeer.displayName)")
+            
             // Process the quantum payment
+            print("🔄 PaymentRequestView: Processing quantum payment...")
             let transactionId = try await processQuantumPayment(
                 amount: paymentRequest.amount,
                 currency: paymentRequest.currency
             )
+            
+            print("✅ PaymentRequestView: Payment processed successfully: \(transactionId)")
+            
+            // Generate quantum receipt
+            print("🔐 PaymentRequestView: Generating quantum receipt...")
+            let quantumReceipt = try await receiptService.generateReceiptForNepPayTransaction(
+                transactionId: transactionId,
+                fromAccountId: getCurrentAccountId(),
+                toAccountId: getReceiverAccountId(),
+                amount: paymentRequest.amount,
+                currency: paymentRequest.currency
+            )
+            
+            print("✅ PaymentRequestView: Quantum receipt generated successfully")
             
             // Send acceptance response
             tapToSendService.sendPaymentResponse(
@@ -1128,13 +1164,18 @@ struct PaymentRequestView: View {
                 transactionId: transactionId
             )
             
-            // Dismiss the view
-            DispatchQueue.main.async {
-                self.dismiss()
+            print("✅ PaymentRequestView: Payment response sent")
+            
+            // Show quantum receipt
+            await MainActor.run {
+                self.generatedReceipt = quantumReceipt
+                self.showReceipt = true
+                self.isProcessing = false
             }
             
         } catch {
-            print("Failed to process payment: \(error)")
+            print("❌ PaymentRequestView: Failed to process payment: \(error)")
+            
             // Send rejection response
             if let peer = tapToSendService.connectedPeers.first(where: { $0.displayName == paymentRequest.from }) {
                 tapToSendService.sendPaymentResponse(
@@ -1143,9 +1184,11 @@ struct PaymentRequestView: View {
                     accepted: false
                 )
             }
+            
+            await MainActor.run {
+                isProcessing = false
+            }
         }
-        
-        isProcessing = false
     }
     
     private func rejectPayment() {
@@ -1166,11 +1209,46 @@ struct PaymentRequestView: View {
     }
     
     private func processQuantumPayment(amount: Double, currency: String) async throws -> String {
-        // This would integrate with your existing quantum payment system
-        // For now, we'll simulate a successful transaction
-        try await Task.sleep(nanoseconds: 2_000_000_000) // 2 second delay
+        // Use the real transaction processor
+        let transactionProcessor = TransactionProcessor.shared
         
-        return "tx_\(UUID().uuidString.prefix(8))"
+        do {
+            // Get the current user's account ID (Carlos or Maria)
+            let currentAccountId = getCurrentAccountId()
+            let receiverAccountId = getReceiverAccountId()
+            
+            print("🔄 PaymentRequestView: Processing payment from \(currentAccountId) to \(receiverAccountId)")
+            
+            // Process the transaction with real account IDs
+            let result = try await transactionProcessor.processTransaction(
+                fromAccountId: currentAccountId,
+                toAccountId: receiverAccountId,
+                amount: amount,
+                description: "NepPay Transfer"
+            )
+            
+            print("✅ PaymentRequestView: Transaction processed successfully")
+            print("   Transaction ID: \(result.transactionId)")
+            print("   New sender balance: $\(result.newSenderBalance)")
+            print("   New receiver balance: $\(result.newReceiverBalance)")
+            
+            return result.transactionId
+            
+        } catch {
+            print("❌ PaymentRequestView: Transaction failed - \(error)")
+            throw error
+        }
+    }
+    
+    private func getCurrentAccountId() -> String {
+        // Use Maria's account as the sender (the one sending money)
+        // This should be improved to use a proper shared instance
+        return APIConfig.testAccountId // Maria's account (the sender)
+    }
+    
+    private func getReceiverAccountId() -> String {
+        // Always send to Sofia's checking account
+        return "e8e10efc-53c7-4fb2-9947-"
     }
     
     private func formatCurrency(_ amount: Double) -> String {
@@ -2133,3 +2211,4 @@ struct ScaleButtonStyle: ButtonStyle {
 #Preview {
     TapToSendView()
 }
+

@@ -5,7 +5,7 @@ import CryptoKit
 class QuantumAPI: ObservableObject {
     static let shared = QuantumAPI()
     
-    private let baseURL = "http://localhost:8000"
+    private let baseURL = "http://localhost:8001"
     private let session = URLSession.shared
     
     private init() {}
@@ -142,7 +142,7 @@ protocol QuantumSigner {
 // - Proper key and signature sizes
 // - Production-ready implementation
 class DilithiumQuantumSigner: ObservableObject, QuantumSigner {
-    private let baseURL = "http://localhost:8000/pqc"
+    private let baseURL = "http://localhost:8001/pqc"
     private let session = URLSession.shared
     
     func generateKeyPair() -> (publicKey: String, privateKey: String) {

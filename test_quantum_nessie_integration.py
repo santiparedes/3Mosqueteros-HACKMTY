@@ -8,7 +8,7 @@ import json
 import time
 
 # Configuration
-QUANTUM_API_BASE = "http://localhost:8000"
+QUANTUM_API_BASE = "http://localhost:8001"
 NESSIE_API_BASE = "http://api.nessieisreal.com"
 NESSIE_API_KEY = "2efca97355951ec13f6acfd0a8806a14"
 

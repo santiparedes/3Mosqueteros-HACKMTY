@@ -3,6 +3,7 @@ import SwiftUI
 struct CreditReportView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var creditService = CreditService.shared
+    @StateObject private var creditScoringService = CreditScoringService.shared
     @StateObject private var userManager = UserManager.shared
     @State private var isLoading = false
     @State private var creditScore: Int = 0
@@ -166,7 +167,7 @@ struct CreditReportView: View {
                             .font(.caption)
                             .foregroundColor(.nepTextSecondary)
                     }
-                    .padding(.leading, 14)
+                    .padding(.leading, 10)
                     
                     if msiEligible {
                         VStack(alignment: .leading, spacing: 4) {
@@ -384,10 +385,31 @@ struct CreditReportView: View {
         
         Task {
             do {
-                guard let user = userManager.currentUser else { return }
-                let offer = try await creditService.scoreCredit(for: user)
+                // First try to get the credit score from the CreditScoringService
+                if let currentScore = creditScoringService.currentCreditScore {
+                    DispatchQueue.main.async {
+                        let offer = currentScore.offer
+                        // Convert PD90 score to credit score (inverse relationship)
+                        // PD90 of 0.1 = 750+ score, PD90 of 0.5 = 600 score, etc.
+                        let pd90 = offer.pd90Score
+                        self.creditScore = max(300, min(850, Int(850 - (pd90 * 500))))
+                        self.creditLimit = offer.creditLimit
+                        self.riskTier = offer.riskTier
+                        self.msiEligible = offer.msiEligible
+                        self.msiMonths = offer.msiMonths
+                        self.isLoading = false
+                    }
+                    return
+                }
+                
+                // Use the real account ID for consistent testing
+                let testAccountId = APIConfig.testAccountId
+                print("🔍 CreditReportView: Loading credit data for account: \(testAccountId)")
+                
+                let result = try await creditScoringService.scoreCreditByAccount(accountId: testAccountId)
                 
                 DispatchQueue.main.async {
+                    let offer = result.offer
                     // Convert PD90 score to credit score (inverse relationship)
                     // PD90 of 0.1 = 750+ score, PD90 of 0.5 = 600 score, etc.
                     let pd90 = offer.pd90Score
@@ -397,16 +419,47 @@ struct CreditReportView: View {
                     self.msiEligible = offer.msiEligible
                     self.msiMonths = offer.msiMonths
                     self.isLoading = false
+                    print("✅ CreditReportView: Credit data loaded successfully")
                 }
             } catch {
-                DispatchQueue.main.async {
-                    // Use default values if API fails
-                    self.creditScore = 650
-                    self.creditLimit = 5000
-                    self.riskTier = "Fair"
-                    self.msiEligible = false
-                    self.msiMonths = 0
-                    self.isLoading = false
+                print("❌ CreditReportView: Failed to load credit data - \(error.localizedDescription)")
+                
+                // Fallback to old credit service
+                do {
+                    guard let user = userManager.currentUser else {
+                        DispatchQueue.main.async {
+                            // Use default values if no user
+                            self.creditScore = 650
+                            self.creditLimit = 5000
+                            self.riskTier = "Fair"
+                            self.msiEligible = false
+                            self.msiMonths = 0
+                            self.isLoading = false
+                        }
+                        return
+                    }
+                    let offer = try await creditService.scoreCredit(for: user)
+                    
+                    DispatchQueue.main.async {
+                        // Convert PD90 score to credit score (inverse relationship)
+                        let pd90 = offer.pd90Score
+                        self.creditScore = max(300, min(850, Int(850 - (pd90 * 500))))
+                        self.creditLimit = offer.creditLimit
+                        self.riskTier = offer.riskTier
+                        self.msiEligible = offer.msiEligible
+                        self.msiMonths = offer.msiMonths
+                        self.isLoading = false
+                    }
+                } catch {
+                    DispatchQueue.main.async {
+                        // Use default values if all APIs fail
+                        self.creditScore = 650
+                        self.creditLimit = 5000
+                        self.riskTier = "Fair"
+                        self.msiEligible = false
+                        self.msiMonths = 0
+                        self.isLoading = false
+                    }
                 }
             }
         }

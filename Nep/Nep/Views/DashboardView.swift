@@ -44,7 +44,8 @@ struct DashboardView: View {
             }
         }
         .onAppear {
-            viewModel.loadMockData()
+            // Don't load mock data - use existing Supabase data from BankingViewModel
+            print("🔍 DashboardView: Using existing Supabase data from BankingViewModel")
             Task {
                 await quantumBridge.loadMockData()
             }

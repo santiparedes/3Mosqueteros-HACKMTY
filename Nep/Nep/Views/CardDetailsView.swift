@@ -79,7 +79,8 @@ struct CardDetailsView: View {
         }
         .onAppear {
             if !hasLoadedData {
-                viewModel.loadMockData()
+                // Don't load mock data - use existing Supabase data from BankingViewModel
+                print("🔍 CardDetailsView: Using existing Supabase data from BankingViewModel")
                 card = viewModel.getActiveCard()
                 balance = viewModel.getTotalBalance()
                 hasLoadedData = true
@@ -855,14 +856,18 @@ struct CreditCardDetailsSection: View {
         
         Task {
             do {
-                guard let user = userManager.currentUser else { return }
-                let offer = try await creditService.scoreCredit(for: user)
+                // Use the account-based credit scoring instead of user-based
+                let creditScoringService = CreditScoringService.shared
+                let testAccountId = APIConfig.testAccountId
+                
+                let result = try await creditScoringService.scoreCreditByAccount(accountId: testAccountId)
                 
                 DispatchQueue.main.async {
-                    self.creditOffer = offer
+                    self.creditOffer = result.offer
                     self.isLoading = false
                 }
             } catch {
+                print("❌ CardDetailsView: Failed to load credit data - \(error.localizedDescription)")
                 DispatchQueue.main.async {
                     self.isLoading = false
                 }

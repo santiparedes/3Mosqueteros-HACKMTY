@@ -150,7 +150,7 @@ struct CreditCardDetailsView: View {
                             Text("Available")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
-                            Text("$\(Int(offer.creditLimit * 0.7))") // Assume 30% used
+                            Text("$\(Int(offer.creditLimit * 0.7))") // Available = 70% of credit limit (typical utilization)
                                 .font(.title2)
                                 .fontWeight(.bold)
                                 .foregroundColor(.green)
@@ -215,7 +215,7 @@ struct CreditCardDetailsView: View {
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                             Spacer()
-                            Text("30%")
+                            Text("\(Int(offer.creditLimit * 0.3 / offer.creditLimit * 100))%") // 30% usage for demo
                                 .font(.caption)
                                 .fontWeight(.medium)
                         }
@@ -229,7 +229,7 @@ struct CreditCardDetailsView: View {
                                 
                                 Rectangle()
                                     .fill(Color.orange)
-                                    .frame(width: geometry.size.width * 0.3, height: 8)
+                                    .frame(width: geometry.size.width * min(1.0, 0.3), height: 8) // 30% usage for demo
                                     .cornerRadius(4)
                             }
                         }
@@ -423,25 +423,19 @@ struct CreditCardDetailsView: View {
                     return
                 }
                 
-                // If no current score, try to score using the account ID
-                guard let user = userManager.currentUser else {
-                    // Use mock data if no user
-                    DispatchQueue.main.async {
-                        self.creditOffer = MockData.sampleCreditOffer
-                        self.isLoading = false
-                    }
-                    return
-                }
-                
-                // Use the test account ID for consistent testing
+                // Use the real account ID for consistent testing
                 let testAccountId = APIConfig.testAccountId
+                print("🔍 CreditCardDetailsView: Loading credit data for account: \(testAccountId)")
+                
                 let result = try await creditScoringService.scoreCreditByAccount(accountId: testAccountId)
                 
                 DispatchQueue.main.async {
                     self.creditOffer = result.offer
                     self.isLoading = false
+                    print("✅ CreditCardDetailsView: Credit data loaded successfully")
                 }
             } catch {
+                print("❌ CreditCardDetailsView: Failed to load credit data - \(error.localizedDescription)")
                 print("❌ CreditCardDetailsView: Credit scoring failed: \(error.localizedDescription)")
                 
                 // Fallback to old credit service

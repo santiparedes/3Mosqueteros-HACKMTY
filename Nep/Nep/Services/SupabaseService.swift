@@ -100,6 +100,26 @@ class SupabaseService: ObservableObject {
         }
     }
     
+    func getAccount(by accountId: String) async throws -> Account? {
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            let response: DatabaseAccount? = try await client
+                .from("accounts")
+                .select()
+                .eq("account_id", value: accountId)
+                .single()
+                .execute()
+                .value
+            
+            return response.map { DatabaseMappingService.mapToAccount(from: $0) }
+        } catch {
+            errorMessage = "Failed to get account: \(error.localizedDescription)"
+            return nil
+        }
+    }
+    
     func createAccount(_ account: Account) async throws -> Account {
         isLoading = true
         defer { isLoading = false }

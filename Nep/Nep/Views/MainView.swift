@@ -5,6 +5,7 @@ struct MainHeaderView: View {
     @ObservedObject var userManager: UserManager
     @ObservedObject var viewModel: BankingViewModel
     @Binding var showUserSelection: Bool
+    let onSwitchToSofia: () -> Void
     
     var body: some View {
         HStack {
@@ -24,7 +25,12 @@ struct MainHeaderView: View {
             
             // Profile Avatar
             Button(action: {
-                showUserSelection = true
+                // Check if current user is Maria (M) and switch to Sofia
+                if let user = viewModel.user, user.firstName.prefix(1) == "M" {
+                    onSwitchToSofia()
+                } else {
+                    showUserSelection = true
+                }
             }) {
                 ZStack {
                     Circle()
@@ -357,10 +363,23 @@ struct MainView: View {
                     ScrollView {
                         VStack(spacing: 24) {
                             // Header with User Info
-                            MainHeaderView(userManager: userManager, viewModel: viewModel, showUserSelection: $showUserSelection)
+                            MainHeaderView(
+                                userManager: userManager, 
+                                viewModel: viewModel, 
+                                showUserSelection: $showUserSelection,
+                                onSwitchToSofia: switchToSofiaAccount
+                            )
                             
-                            // Total Balance Card
-                            TotalBalanceCard(balance: getTotalBalance(), isVisible: $isBalanceVisible)
+                            // Total Balance Card with Animation
+                            AnimatedBalanceCard(
+                                balance: getTotalBalance(),
+                                isVisible: isBalanceVisible,
+                                onToggleVisibility: {
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        isBalanceVisible.toggle()
+                                    }
+                                }
+                            )
                             
                             // Quick Actions Grid
                             QuickActionsGrid(
@@ -396,10 +415,21 @@ struct MainView: View {
                         }
                         .padding(.horizontal, 20)
                     }
+                    .refreshable {
+                        print("🔄 MainView: Pull-to-refresh triggered")
+                        await refreshDataFromSupabase()
+                    }
                 }
                 .onAppear {
                     Task {
                         await quantumBridge.loadMockData()
+                    }
+                    
+                    // Initialize quantum wallet ID
+                    Task {
+                        if quantumWalletId.isEmpty {
+                            quantumWalletId = "qwallet_\(UUID().uuidString.prefix(16))"
+                        }
                     }
                     
                     // Test Supabase connection
@@ -414,6 +444,12 @@ struct MainView: View {
                         }
                     }
                     
+                    // Refresh data from Supabase to show loading indicator
+                    Task {
+                        print("🔄 MainView: Refreshing data from Supabase...")
+                        await refreshDataFromSupabase()
+                    }
+                    
                     // Run credit scoring once per user session
                     Task {
                         await runCreditScoring()
@@ -424,6 +460,12 @@ struct MainView: View {
                 }
                 .fullScreenCover(isPresented: $showSendMoney) {
                     TapToSendView()
+                        .onDisappear {
+                            // Refresh data after transaction
+                            Task {
+                                await refreshDataFromSupabase()
+                            }
+                        }
                 }
                 .fullScreenCover(isPresented: $showAddMoney) {
                     AddMoneyView()
@@ -438,12 +480,25 @@ struct MainView: View {
                     let _ = print("🔴 MainView: Abriendo CreditReportView...")
                     CreditReportView()
                 }
+                .sheet(isPresented: $showEncryptionCheck) {
+                    QuantumSecurityDetailsView(quantumWalletId: quantumWalletId)
+                }
             }
         }
     }
     
     private func getTotalBalance() -> Double {
-        return viewModel.accounts.reduce(0) { $0 + $1.balance }
+        // Only include positive balances (checking/savings accounts)
+        // Credit card balances are negative and represent debt, not available funds
+        return viewModel.accounts.reduce(0) { total, account in
+            if account.type.lowercased().contains("credit") {
+                // For credit cards, we don't add the negative balance to total available funds
+                return total
+            } else {
+                // For checking/savings accounts, add the positive balance
+                return total + account.balance
+            }
+        }
     }
     
     private func addDebugMoney() {
@@ -454,12 +509,21 @@ struct MainView: View {
         }
     }
     
-    private func runCreditScoring() async {
-        print("🔍 MainView: Starting credit scoring for test account...")
+    private func refreshDataFromSupabase() async {
+        print("🔄 MainView: Starting data refresh from Supabase...")
+        viewModel.loadDataFromSupabase()
         
-        // Use the test account ID from the Supabase integration test
+        // Add a small delay to make the loading indicator more visible
+        try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second delay
+        print("✅ MainView: Data refresh completed")
+    }
+    
+    private func runCreditScoring() async {
+        print("🔍 MainView: Starting credit scoring for real customer...")
+        
+        // Use the real account ID from Supabase (Maria Garcia)
         let testAccountId = APIConfig.testAccountId
-        print("📊 MainView: Using test account ID: \(testAccountId)")
+        print("📊 MainView: Using account ID: \(testAccountId)")
         
         let creditScoringService = CreditScoringService.shared
         
@@ -470,6 +534,7 @@ struct MainView: View {
         }
         
         do {
+            // Try to score using the account ID
             let result = try await creditScoringService.scoreCreditByAccount(accountId: testAccountId)
             print("🎉 MainView: Credit scoring completed successfully!")
             print("   - Risk Tier: \(result.offer.riskTier)")
@@ -481,6 +546,15 @@ struct MainView: View {
             print("   This is expected if the backend is not running or the account doesn't exist in Supabase")
         }
     }
+    
+    // MARK: - Account Switching
+    private func switchToSofiaAccount() {
+        print("🔄 MainView: Switching to Sofia Mendez account...")
+        
+        // Use BankingViewModel's account switching
+        viewModel.switchToSofia()
+    }
+    
 }
 
 struct AddView: View {

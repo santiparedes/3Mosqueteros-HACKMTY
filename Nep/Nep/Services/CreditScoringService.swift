@@ -205,8 +205,9 @@ class CreditScoringService: ObservableObject {
     // MARK: - Helper Methods
     
     func hasValidScore(for accountId: String) -> Bool {
-        return currentCreditScore?.accountId == accountId && 
-               currentCreditScore?.scoredAt.timeIntervalSinceNow > -3600 // Valid for 1 hour
+        guard let score = currentCreditScore else { return false }
+        return score.accountId == accountId && 
+               score.scoredAt.timeIntervalSinceNow > -3600 // Valid for 1 hour
     }
     
     func clearScore() {

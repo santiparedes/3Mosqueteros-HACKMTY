@@ -104,7 +104,7 @@ class CreditService: ObservableObject {
         
         // Get the current account ID from BankingViewModel
         let bankingViewModel = BankingViewModel()
-        let accountId = bankingViewModel.accounts.first?.id ?? "275b3406-0803-4415-8b0e-"
+        let accountId = bankingViewModel.accounts.first?.id ?? APIConfig.testAccountId
         
         // Use the new automatic endpoint
         return try await scoreCreditByAccount(accountId: accountId)

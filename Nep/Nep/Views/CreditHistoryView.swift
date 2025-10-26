@@ -111,7 +111,7 @@ struct CreditHistoryView: View {
                         Text(score.offer.riskTier)
                             .font(.title2)
                             .fontWeight(.bold)
-                            .foregroundColor(riskTierColor(score.offer.riskTier))
+                            .foregroundColor(Self.riskTierColor(score.offer.riskTier))
                     }
                     
                     Spacer()
@@ -123,7 +123,7 @@ struct CreditHistoryView: View {
                         Text("\(String(format: "%.1f", score.offer.pd90Score * 100))%")
                             .font(.title2)
                             .fontWeight(.bold)
-                            .foregroundColor(pd90ScoreColor(score.offer.pd90Score))
+                            .foregroundColor(Self.pd90ScoreColor(score.offer.pd90Score))
                     }
                 }
                 
@@ -230,6 +230,34 @@ struct CreditHistoryView: View {
             }
         }
     }
+    
+    static func riskTierColor(_ riskTier: String) -> Color {
+        switch riskTier.lowercased() {
+        case "prime":
+            return .green
+        case "near prime":
+            return .blue
+        case "subprime":
+            return .orange
+        case "high risk":
+            return .red
+        default:
+            return .gray
+        }
+    }
+    
+    static func pd90ScoreColor(_ score: Double) -> Color {
+        // PD90 score is probability of default in 90 days (lower is better)
+        if score < 0.05 { // Less than 5%
+            return .green
+        } else if score < 0.15 { // Less than 15%
+            return .blue
+        } else if score < 0.30 { // Less than 30%
+            return .orange
+        } else {
+            return .red
+        }
+    }
 }
 
 // MARK: - Credit History Detail Row
@@ -291,7 +319,7 @@ struct CreditHistoryDetailRow: View {
                             Text(riskTier)
                                 .font(.subheadline)
                                 .fontWeight(.medium)
-                                .foregroundColor(riskTierColor(riskTier))
+                                .foregroundColor(CreditHistoryView.riskTierColor(riskTier))
                         }
                     }
                 }
@@ -318,34 +346,6 @@ struct CreditHistoryDetailRow: View {
         displayFormatter.dateStyle = .medium
         displayFormatter.timeStyle = .short
         return displayFormatter.string(from: date)
-    }
-    
-    private func riskTierColor(_ riskTier: String) -> Color {
-        switch riskTier.lowercased() {
-        case "prime":
-            return .green
-        case "near prime":
-            return .blue
-        case "subprime":
-            return .orange
-        case "high risk":
-            return .red
-        default:
-            return .gray
-        }
-    }
-    
-    private func pd90ScoreColor(_ score: Double) -> Color {
-        // PD90 score is probability of default in 90 days (lower is better)
-        if score < 0.05 { // Less than 5%
-            return .green
-        } else if score < 0.15 { // Less than 15%
-            return .blue
-        } else if score < 0.30 { // Less than 30%
-            return .orange
-        } else {
-            return .red
-        }
     }
 }
 

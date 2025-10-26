@@ -4,7 +4,7 @@
 <dict>
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>group.tec.mx.ExamenFinal</string>
+		<string>group.tec.mx.nep</string>
 	</array>
 </dict>
 </plist>

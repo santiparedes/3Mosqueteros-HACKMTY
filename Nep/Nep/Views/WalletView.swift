@@ -47,7 +47,8 @@ struct WalletView: View {
             }
         }
         .onAppear {
-            viewModel.loadMockData()
+            // Don't load mock data - use existing Supabase data from BankingViewModel
+            print("🔍 WalletView: Using existing Supabase data from BankingViewModel")
             Task {
                 await quantumBridge.loadMockData()
             }
@@ -64,7 +65,17 @@ struct WalletView: View {
     }
     
     private func getTotalBalance() -> Double {
-        return viewModel.accounts.reduce(0) { $0 + $1.balance }
+        // Only include positive balances (checking/savings accounts)
+        // Credit card balances are negative and represent debt, not available funds
+        return viewModel.accounts.reduce(0) { total, account in
+            if account.type.lowercased().contains("credit") {
+                // For credit cards, we don't add the negative balance to total available funds
+                return total
+            } else {
+                // For checking/savings accounts, add the positive balance
+                return total + account.balance
+            }
+        }
     }
     
     private func getCurrentUserCards() -> [Card] {
