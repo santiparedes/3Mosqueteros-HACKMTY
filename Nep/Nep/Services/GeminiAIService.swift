@@ -23,7 +23,9 @@ class GeminiAIService: ObservableObject {
         }
         
         print("✅ GEMINI: API configured, sending request...")
+        print("🔑 GEMINI: Using API key: \(apiKey.prefix(10))...")
         let prompt = createINEAnalysisPrompt(ocrResults)
+        print("📝 GEMINI: Prompt length: \(prompt.count) characters")
         
         do {
             let response = try await sendGeminiRequest(prompt: prompt)
@@ -133,10 +135,17 @@ class GeminiAIService: ObservableObject {
     }
     
     // MARK: - Private Methods
-    private func sendGeminiRequest(prompt: String) async throws -> String {
+    func sendGeminiRequest(prompt: String) async throws -> String {
+        print("🤖 GEMINI: Starting API request...")
+        print("🔗 GEMINI: Base URL: \(baseURL)")
+        print("🔑 GEMINI: API Key: \(apiKey.prefix(10))...")
+        
         guard let url = URL(string: "\(baseURL)?key=\(apiKey)") else {
+            print("❌ GEMINI: Invalid URL")
             throw GeminiError.invalidURL
         }
+        
+        print("✅ GEMINI: URL created successfully")
         
         let requestBody = GeminiRequest(
             contents: [
@@ -148,7 +157,7 @@ class GeminiAIService: ObservableObject {
                 temperature: 0.7,
                 topK: 40,
                 topP: 0.95,
-                maxOutputTokens: 1024
+                maxOutputTokens: 2048
             )
         )
         
@@ -161,19 +170,81 @@ class GeminiAIService: ObservableObject {
         
         let (data, response) = try await URLSession.shared.data(for: request)
         
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
+        print("📡 GEMINI: Received response")
+        print("📊 GEMINI: Response data size: \(data.count) bytes")
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            print("❌ GEMINI: No HTTP response received")
             throw GeminiError.invalidResponse
         }
         
-        let geminiResponse = try JSONDecoder().decode(GeminiResponse.self, from: data)
+        print("📊 GEMINI: HTTP Status Code: \(httpResponse.statusCode)")
         
-        guard let candidate = geminiResponse.candidates.first,
-              let part = candidate.content.parts.first else {
-            throw GeminiError.noContent
+        if httpResponse.statusCode != 200 {
+            print("❌ GEMINI: HTTP Error \(httpResponse.statusCode)")
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("❌ GEMINI: Error Response: \(responseString)")
+            }
+            throw GeminiError.invalidResponse
         }
         
-        return part.text
+        print("✅ GEMINI: HTTP response successful (200)")
+        
+        // Debug: Print the raw response
+        if let responseString = String(data: data, encoding: .utf8) {
+            print("📝 GEMINI: Raw response: \(responseString)")
+        }
+        
+        // Try to parse the new response format first
+        do {
+            let geminiResponse = try JSONDecoder().decode(GeminiResponse.self, from: data)
+            
+            guard let candidate = geminiResponse.candidates.first,
+                  let part = candidate.content.parts.first else {
+                print("❌ GEMINI: No content in response")
+                throw GeminiError.noContent
+            }
+            
+            print("✅ GEMINI: Successfully parsed response")
+            print("📝 GEMINI: Response text length: \(part.text.count) characters")
+            
+            return part.text
+        } catch {
+            print("❌ GEMINI: Failed to parse with old format, trying new format")
+            
+            // Try the new simplified response format
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("📝 GEMINI: Trying to extract text from: \(responseString)")
+                
+                // Look for "text" field in the response
+                if let jsonData = responseString.data(using: .utf8),
+                   let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+                   let candidates = json["candidates"] as? [[String: Any]],
+                   let firstCandidate = candidates.first {
+                    
+                    // Check if response was cut off due to MAX_TOKENS
+                    if let finishReason = firstCandidate["finishReason"] as? String,
+                       finishReason == "MAX_TOKENS" {
+                        print("⚠️ GEMINI: Response cut off due to MAX_TOKENS, using fallback")
+                        throw GeminiError.noContent
+                    }
+                    
+                    // Try to extract text content
+                    if let content = firstCandidate["content"] as? [String: Any],
+                       let parts = content["parts"] as? [[String: Any]],
+                       let firstPart = parts.first,
+                       let text = firstPart["text"] as? String {
+                        
+                        print("✅ GEMINI: Successfully extracted text from new format")
+                        print("📝 GEMINI: Response text length: \(text.count) characters")
+                        return text
+                    }
+                }
+            }
+            
+            print("❌ GEMINI: Failed to parse response in any format")
+            throw error
+        }
     }
     
     private func createINEAnalysisPrompt(_ ocrResults: OCRResults) -> String {

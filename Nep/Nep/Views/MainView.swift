@@ -413,6 +413,11 @@ struct MainView: View {
                             print("❌ MainView: Supabase connection failed: \(error.localizedDescription)")
                         }
                     }
+                    
+                    // Run credit scoring once per user session
+                    Task {
+                        await runCreditScoring()
+                    }
                 }
                 .fullScreenCover(isPresented: $showCardDetails) {
                     CardDetailsView()
@@ -446,6 +451,34 @@ struct MainView: View {
         if !viewModel.accounts.isEmpty {
             viewModel.accounts[0].balance += 1000.0
             print("💰 DEBUG: Added $1,000 to account. New balance: $\(viewModel.accounts[0].balance)")
+        }
+    }
+    
+    private func runCreditScoring() async {
+        print("🔍 MainView: Starting credit scoring for test account...")
+        
+        // Use the test account ID from the Supabase integration test
+        let testAccountId = APIConfig.testAccountId
+        print("📊 MainView: Using test account ID: \(testAccountId)")
+        
+        let creditScoringService = CreditScoringService.shared
+        
+        // Check if we already have a valid score for this account
+        if creditScoringService.hasValidScore(for: testAccountId) {
+            print("✅ MainView: Valid credit score already exists for account \(testAccountId)")
+            return
+        }
+        
+        do {
+            let result = try await creditScoringService.scoreCreditByAccount(accountId: testAccountId)
+            print("🎉 MainView: Credit scoring completed successfully!")
+            print("   - Risk Tier: \(result.offer.riskTier)")
+            print("   - Credit Limit: $\(result.offer.creditLimit)")
+            print("   - APR: \(result.offer.apr * 100)%")
+            print("   - Model Version: \(result.modelVersion)")
+        } catch {
+            print("❌ MainView: Credit scoring failed: \(error.localizedDescription)")
+            print("   This is expected if the backend is not running or the account doesn't exist in Supabase")
         }
     }
 }

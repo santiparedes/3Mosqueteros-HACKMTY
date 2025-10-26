@@ -3,6 +3,7 @@ import SwiftUI
 struct CreditCardDetailsView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var creditService = CreditService.shared
+    @StateObject private var creditScoringService = CreditScoringService.shared
     @StateObject private var userManager = UserManager.shared
     @State private var creditOffer: CreditOffer?
     @State private var isLoading = false
@@ -22,6 +23,11 @@ struct CreditCardDetailsView: View {
                     // MSI Information
                     if let offer = creditOffer, offer.msiEligible {
                         msiSection(offer)
+                    }
+                    
+                    // Model Information
+                    if let offer = creditOffer, let currentScore = creditScoringService.currentCreditScore {
+                        modelInfoSection(currentScore)
                     }
                     
                     // Quick Actions
@@ -176,6 +182,32 @@ struct CreditCardDetailsView: View {
                         }
                     }
                     
+                    Divider()
+                    
+                    HStack {
+                        VStack(alignment: .leading) {
+                            Text("PD90 Score")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Text("\(String(format: "%.1f", offer.pd90Score * 100))%")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundColor(pd90ScoreColor(offer.pd90Score))
+                        }
+                        
+                        Spacer()
+                        
+                        VStack(alignment: .trailing) {
+                            Text("Confidence")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Text("\(String(format: "%.0f", offer.confidence * 100))%")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundColor(.blue)
+                        }
+                    }
+                    
                     // Usage bar
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
@@ -275,6 +307,70 @@ struct CreditCardDetailsView: View {
         }
     }
     
+    // MARK: - Model Information Section
+    private func modelInfoSection(_ score: CreditScoreResult) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Credit Analysis")
+                .font(.headline)
+                .fontWeight(.semibold)
+            
+            VStack(spacing: 12) {
+                HStack {
+                    Image(systemName: "brain.head.profile")
+                        .foregroundColor(.blue)
+                        .frame(width: 20)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("AI Model Version")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        
+                        Text(score.modelVersion)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    Text("AI Powered")
+                        .font(.caption)
+                        .fontWeight(.bold)
+                        .foregroundColor(.blue)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.blue.opacity(0.2))
+                        .cornerRadius(8)
+                }
+                
+                HStack {
+                    Image(systemName: "clock")
+                        .foregroundColor(.green)
+                        .frame(width: 20)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Analysis Date")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        
+                        Text(DateFormatter.localizedString(from: score.scoredAt, dateStyle: .medium, timeStyle: .short))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Spacer()
+                }
+                
+                Text(score.offer.explanation)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.top, 4)
+            }
+            .padding()
+            .background(Color.blue.opacity(0.1))
+            .cornerRadius(12)
+        }
+    }
+    
     // MARK: - Quick Actions Section
     private var quickActionsSection: some View {
         VStack(spacing: 12) {
@@ -318,6 +414,16 @@ struct CreditCardDetailsView: View {
         
         Task {
             do {
+                // First try to get the credit score from the CreditScoringService
+                if let currentScore = creditScoringService.currentCreditScore {
+                    DispatchQueue.main.async {
+                        self.creditOffer = currentScore.offer
+                        self.isLoading = false
+                    }
+                    return
+                }
+                
+                // If no current score, try to score using the account ID
                 guard let user = userManager.currentUser else {
                     // Use mock data if no user
                     DispatchQueue.main.async {
@@ -326,17 +432,39 @@ struct CreditCardDetailsView: View {
                     }
                     return
                 }
-                let offer = try await creditService.scoreCredit(for: user)
+                
+                // Use the test account ID for consistent testing
+                let testAccountId = APIConfig.testAccountId
+                let result = try await creditScoringService.scoreCreditByAccount(accountId: testAccountId)
                 
                 DispatchQueue.main.async {
-                    self.creditOffer = offer
+                    self.creditOffer = result.offer
                     self.isLoading = false
                 }
             } catch {
-                DispatchQueue.main.async {
-                    // Use mock data if API fails
-                    self.creditOffer = MockData.sampleCreditOffer
-                    self.isLoading = false
+                print("❌ CreditCardDetailsView: Credit scoring failed: \(error.localizedDescription)")
+                
+                // Fallback to old credit service
+                do {
+                    guard let user = userManager.currentUser else {
+                        DispatchQueue.main.async {
+                            self.creditOffer = MockData.sampleCreditOffer
+                            self.isLoading = false
+                        }
+                        return
+                    }
+                    let offer = try await creditService.scoreCredit(for: user)
+                    
+                    DispatchQueue.main.async {
+                        self.creditOffer = offer
+                        self.isLoading = false
+                    }
+                } catch {
+                    DispatchQueue.main.async {
+                        // Use mock data if all APIs fail
+                        self.creditOffer = MockData.sampleCreditOffer
+                        self.isLoading = false
+                    }
                 }
             }
         }
@@ -354,6 +482,19 @@ struct CreditCardDetailsView: View {
             return .red
         default:
             return .gray
+        }
+    }
+    
+    private func pd90ScoreColor(_ score: Double) -> Color {
+        // PD90 score is probability of default in 90 days (lower is better)
+        if score < 0.05 { // Less than 5%
+            return .green
+        } else if score < 0.15 { // Less than 15%
+            return .blue
+        } else if score < 0.30 { // Less than 30%
+            return .orange
+        } else {
+            return .red
         }
     }
 }

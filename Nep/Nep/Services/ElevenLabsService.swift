@@ -2,8 +2,15 @@ import Foundation
 import AVFoundation
 import Speech
 
+extension Notification.Name {
+    static let voiceRecognitionResult = Notification.Name("voiceRecognitionResult")
+}
+
 class ElevenLabsService: NSObject, ObservableObject {
     static let shared = ElevenLabsService()
+    
+    // Debug flag to force Apple TTS instead of ElevenLabs
+    static var forceAppleTTS = false
     
     @Published var isSpeaking = false
     @Published var isListening = false
@@ -11,10 +18,16 @@ class ElevenLabsService: NSObject, ObservableObject {
     @Published var conversationHistory: [ConversationMessage] = []
     @Published var isGeminiProcessing = false
     
+    // Audio queue management
+    private var audioQueue: [String] = []
+    private var isProcessingQueue = false
+    private var hasPostedResult = false
+    
     private let apiKey = APIConfig.elevenLabsAPIKey
     private let baseURL = APIConfig.elevenLabsBaseURL
     private var audioPlayer: AVAudioPlayer?
     private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "es-MX"))
+    private let speechSynthesizer = AVSpeechSynthesizer()
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private let audioEngine = AVAudioEngine()
@@ -26,15 +39,43 @@ class ElevenLabsService: NSObject, ObservableObject {
     
     private override init() {
         super.init()
-        setupAudioSession()
+        Task {
+            await setupAudioSession()
+        }
     }
     
-    private func setupAudioSession() {
+    private func setupAudioSession() async {
         do {
-            try AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
+            print("🔊 ELEVENLABS: Setting up audio session for playback...")
+            
+            // First deactivate the current session
+            try? AVAudioSession.sharedInstance().setActive(false)
+            
+            // Wait a moment for deactivation to complete
+            try await Task.sleep(nanoseconds: 50_000_000) // 0.05 seconds
+            
+            // Set category for playback
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [])
             try AVAudioSession.sharedInstance().setActive(true)
+            print("✅ ELEVENLABS: Audio session configured for playback")
         } catch {
-            print("Failed to setup audio session: \(error)")
+            print("❌ ELEVENLABS: Failed to setup playback audio session: \(error)")
+        }
+    }
+    
+    private func setupAudioSessionForRecording() {
+        do {
+            print("🔊 ELEVENLABS: Setting up audio session for recording...")
+            
+            // First deactivate the current session
+            try? AVAudioSession.sharedInstance().setActive(false)
+            
+            // Set category for recording
+            try AVAudioSession.sharedInstance().setCategory(.record, mode: .measurement, options: [.duckOthers])
+            try AVAudioSession.sharedInstance().setActive(true)
+            print("✅ ELEVENLABS: Audio session configured for recording")
+        } catch {
+            print("❌ ELEVENLABS: Failed to setup recording audio session: \(error)")
         }
     }
     
@@ -43,26 +84,69 @@ class ElevenLabsService: NSObject, ObservableObject {
         print("🎤 ELEVENLABS: Starting speech generation...")
         print("🎤 ELEVENLABS: Text to speak: \(text.prefix(50))...")
         
+        // Check if we're already processing this exact text
+        if audioQueue.contains(text) {
+            print("🎤 ELEVENLABS: Text already in queue, skipping duplicate")
+            return
+        }
+        
+        // Add to queue instead of speaking immediately
+        audioQueue.append(text)
+        
+        // Process queue if not already processing
+        if !isProcessingQueue {
+            await processAudioQueue(voiceId: voiceId)
+        }
+    }
+    
+    private func processAudioQueue(voiceId: String) async {
+        guard !isProcessingQueue else { return }
+        
+        isProcessingQueue = true
+        
+        while !audioQueue.isEmpty {
+            let text = audioQueue.removeFirst()
+            
+            // Wait for any current speech to finish
+            while isSpeaking {
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+            }
+            
+            // Speak the text
+            await speakImmediately(text, voiceId: voiceId)
+        }
+        
+        isProcessingQueue = false
+    }
+    
+    private func speakImmediately(_ text: String, voiceId: String) async {
+        // Re-setup audio session to ensure it's active
+        await setupAudioSession()
+        
         await MainActor.run {
             isSpeaking = true
             currentMessage = text
         }
         
         guard APIConfig.isElevenLabsConfigured else {
-            print("❌ ELEVENLABS: API not configured. Using system TTS.")
-            await speakWithSystemTTS(text)
+            print("❌ ELEVENLABS: API not configured. Skipping speech.")
+            await MainActor.run {
+                isSpeaking = false
+            }
             return
         }
         
         print("✅ ELEVENLABS: API configured, generating speech...")
+        print("🔑 ELEVENLABS: Using API key: \(apiKey.prefix(10))...")
+        print("🎯 ELEVENLABS: Using voice ID: \(voiceId)")
+        print("📝 ELEVENLABS: Text length: \(text.count) characters")
         do {
             let audioData = try await generateSpeech(text: text, voiceId: voiceId)
             try await playAudio(audioData)
             print("✅ ELEVENLABS: Speech generated and played successfully!")
         } catch {
             print("❌ ELEVENLABS: Speech generation error: \(error)")
-            // Fallback to system TTS
-            await speakWithSystemTTS(text)
+            // Just skip speech if ElevenLabs fails
         }
         
         await MainActor.run {
@@ -93,22 +177,43 @@ class ElevenLabsService: NSObject, ObservableObject {
         
         let (data, response) = try await URLSession.shared.data(for: request)
         
+        print("📊 ELEVENLABS: Received audio data: \(data.count) bytes")
+        
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
+            print("❌ ELEVENLABS: Invalid HTTP response")
             throw ElevenLabsError.invalidResponse
         }
         
+        print("✅ ELEVENLABS: Audio data received successfully")
         return data
     }
     
     private func playAudio(_ data: Data) async throws {
+        print("🔊 ELEVENLABS: Preparing to play audio...")
+        
         return try await withCheckedThrowingContinuation { continuation in
             do {
+                // Ensure audio session is active
+                try AVAudioSession.sharedInstance().setActive(true)
+                
                 audioPlayer = try AVAudioPlayer(data: data)
                 audioPlayer?.delegate = self
-                audioPlayer?.play()
-                continuation.resume()
+                audioPlayer?.volume = 1.0
+                audioPlayer?.prepareToPlay()
+                
+                print("🔊 ELEVENLABS: Audio player prepared, starting playback...")
+                let success = audioPlayer?.play() ?? false
+                
+                if success {
+                    print("✅ ELEVENLABS: Audio playback started successfully")
+                    continuation.resume()
+                } else {
+                    print("❌ ELEVENLABS: Failed to start audio playback")
+                    continuation.resume(throwing: ElevenLabsError.invalidResponse)
+                }
             } catch {
+                print("❌ ELEVENLABS: Audio playback error: \(error)")
                 continuation.resume(throwing: error)
             }
         }
@@ -116,12 +221,24 @@ class ElevenLabsService: NSObject, ObservableObject {
     
     // MARK: - Speech to Text
     func startListening() async throws {
-        guard !isListening else { return }
+        guard !isListening else { 
+            print("🎤 SPEECH RECOGNITION: Already listening, ignoring start request")
+            return 
+        }
         
-        // Cancel previous task
+        // Cancel previous task and clean up
         if let recognitionTask = recognitionTask {
+            print("🎤 SPEECH RECOGNITION: Canceling previous task")
             recognitionTask.cancel()
             self.recognitionTask = nil
+        }
+        
+        // Clean up any existing audio engine state
+        if audioEngine.isRunning {
+            print("🎤 SPEECH RECOGNITION: Stopping existing audio engine")
+            audioEngine.stop()
+            let inputNode = audioEngine.inputNode
+            inputNode.removeTap(onBus: 0)
         }
         
         // Request microphone permission
@@ -134,8 +251,12 @@ class ElevenLabsService: NSObject, ObservableObject {
             throw ElevenLabsError.speechRecognitionPermissionDenied
         }
         
+        // Setup audio session for recording
+        setupAudioSessionForRecording()
+        
         await MainActor.run {
             isListening = true
+            hasPostedResult = false  // Reset flag for new session
         }
         
         let audioSession = AVAudioSession.sharedInstance()
@@ -153,6 +274,14 @@ class ElevenLabsService: NSObject, ObservableObject {
         let inputNode = audioEngine.inputNode
         let recordingFormat = inputNode.outputFormat(forBus: 0)
         
+        // Validate the audio format before using it
+        guard recordingFormat.sampleRate > 0 && recordingFormat.channelCount > 0 else {
+            print("❌ SPEECH RECOGNITION: Invalid audio format - sampleRate: \(recordingFormat.sampleRate), channelCount: \(recordingFormat.channelCount)")
+            throw ElevenLabsError.recognitionRequestFailed
+        }
+        
+        print("🎤 SPEECH RECOGNITION: Using audio format - sampleRate: \(recordingFormat.sampleRate), channelCount: \(recordingFormat.channelCount)")
+        
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { buffer, _ in
             recognitionRequest.append(buffer)
         }
@@ -161,34 +290,123 @@ class ElevenLabsService: NSObject, ObservableObject {
         try audioEngine.start()
         
         recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest) { result, error in
-            if let result = result {
-                let spokenText = result.bestTranscription.formattedString
-                Task { @MainActor in
-                    self.currentMessage = spokenText
-                }
-            }
+            print("🎤 SPEECH RECOGNITION: Received result or error")
             
-            if error != nil || result?.isFinal == true {
+            if let error = error {
+                print("❌ SPEECH RECOGNITION: Error: \(error)")
                 self.audioEngine.stop()
                 inputNode.removeTap(onBus: 0)
                 
                 Task { @MainActor in
                     self.isListening = false
                 }
+                return
+            }
+            
+            if let result = result {
+                let spokenText = result.bestTranscription.formattedString
+                print("🎤 SPEECH RECOGNITION: Text: '\(spokenText)', isFinal: \(result.isFinal)")
+                
+                Task { @MainActor in
+                    self.currentMessage = spokenText
+                }
+                
+                // Post notification when we have a final result
+                if result.isFinal {
+                    print("🎤 SPEECH RECOGNITION: Final result - posting notification")
+                    NotificationCenter.default.post(
+                        name: .voiceRecognitionResult,
+                        object: nil,
+                        userInfo: ["text": spokenText]
+                    )
+                } else {
+                    print("🎤 SPEECH RECOGNITION: Partial result - not posting yet")
+                }
+            }
+            
+            if let result = result, result.isFinal {
+                print("🎤 SPEECH RECOGNITION: Stopping recognition (final result)")
+                
+                // Post notification for final result only if it's not empty and we haven't posted yet
+                let spokenText = result.bestTranscription.formattedString
+                if !spokenText.isEmpty && spokenText.trimmingCharacters(in: .whitespacesAndNewlines) != "" && !self.hasPostedResult {
+                    print("🎤 SPEECH RECOGNITION: Final result - posting notification")
+                    self.hasPostedResult = true
+                    NotificationCenter.default.post(
+                        name: .voiceRecognitionResult,
+                        object: nil,
+                        userInfo: ["text": spokenText]
+                    )
+                } else {
+                    print("🎤 SPEECH RECOGNITION: Final result is empty or already posted, not posting")
+                }
+                
+                // Always stop the engine and cleanup
+                self.audioEngine.stop()
+                inputNode.removeTap(onBus: 0)
+                
+                Task { @MainActor in
+                    self.isListening = false
+                }
+                
+                return  // Exit early to prevent further processing
             }
         }
     }
     
     func stopListening() {
+        print("🎤 SPEECH RECOGNITION: Stopping recognition...")
+        
+        // Stop audio engine first
         audioEngine.stop()
+        
+        // Remove tap from input node to stop audio processing
+        let inputNode = audioEngine.inputNode
+        inputNode.removeTap(onBus: 0)
+        
+        // End recognition request
         recognitionRequest?.endAudio()
+        recognitionRequest = nil
+        
+        // Cancel and clear recognition task
         recognitionTask?.cancel()
         recognitionTask = nil
+        
+        // If we have any partial text, post it as a notification
+        if !currentMessage.isEmpty && currentMessage.trimmingCharacters(in: .whitespacesAndNewlines) != "" && !hasPostedResult {
+            print("🎤 SPEECH RECOGNITION: Posting final result: '\(currentMessage)'")
+            hasPostedResult = true
+            NotificationCenter.default.post(
+                name: .voiceRecognitionResult,
+                object: nil,
+                userInfo: ["text": currentMessage]
+            )
+        } else {
+            print("🎤 SPEECH RECOGNITION: No valid message to post or already posted")
+        }
+        
+        // Set microphone mode as default for next voice input
+        setMicrophoneMode()
         
         Task { @MainActor in
             isListening = false
         }
     }
+    
+    // MARK: - Microphone Mode Management
+    func setMicrophoneMode() {
+        print("🎤 MICROPHONE: Setting microphone mode as default")
+        
+        do {
+            // Set audio session for microphone/recording mode
+            try AVAudioSession.sharedInstance().setCategory(.record, mode: .default, options: [])
+            try AVAudioSession.sharedInstance().setActive(true)
+            print("✅ MICROPHONE: Microphone mode set successfully")
+        } catch {
+            print("❌ MICROPHONE: Failed to set microphone mode: \(error)")
+        }
+    }
+    
     
     // MARK: - Gemini-Powered Conversation Management
     func startOnboardingConversation(ocrResults: OCRResults) async {
@@ -318,20 +536,72 @@ class ElevenLabsService: NSObject, ObservableObject {
         }
     }
     
-    // MARK: - System TTS Fallback
-    private func speakWithSystemTTS(_ text: String) async {
+    // MARK: - Apple Native TTS Fallback
+    func speakWithAppleTTS(_ text: String) async {
+        print("🍎 APPLE TTS: Using native Apple voice synthesis")
+        print("🍎 APPLE TTS: Text to speak: \(text.prefix(50))...")
+        
+        // Ensure audio session is set up for playback
+        do {
+            // Try to deactivate current session first (ignore errors)
+            try? AVAudioSession.sharedInstance().setActive(false)
+            
+            // Set category for playback
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [])
+            
+            // Activate the session
+            try AVAudioSession.sharedInstance().setActive(true)
+            print("✅ APPLE TTS: Audio session configured for playback")
+        } catch {
+            print("❌ APPLE TTS: Failed to setup audio session: \(error)")
+            // Try fallback approach
+            do {
+                try AVAudioSession.sharedInstance().setCategory(.playback)
+                try AVAudioSession.sharedInstance().setActive(true)
+                print("✅ APPLE TTS: Fallback audio session configured")
+            } catch {
+                print("❌ APPLE TTS: Fallback also failed: \(error)")
+            }
+        }
+        
         let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = AVSpeechSynthesisVoice(language: "es-MX")
+        
+        // Try to use English voice first, fallback to system default
+        if let englishVoice = AVSpeechSynthesisVoice(language: "en-US") {
+            utterance.voice = englishVoice
+            print("🍎 APPLE TTS: Using English voice")
+        } else if let spanishVoice = AVSpeechSynthesisVoice(language: "es-MX") {
+            utterance.voice = spanishVoice
+            print("🍎 APPLE TTS: Using Spanish voice")
+        } else {
+            print("🍎 APPLE TTS: Using system default voice")
+        }
+        
         utterance.rate = 0.5
         utterance.volume = 1.0
+        utterance.pitchMultiplier = 1.0
         
-        let synthesizer = AVSpeechSynthesizer()
-        synthesizer.speak(utterance)
+        speechSynthesizer.speak(utterance)
+        
+        print("🍎 APPLE TTS: Speech started")
         
         // Wait for speech to complete
-        while synthesizer.isSpeaking {
+        while speechSynthesizer.isSpeaking {
             try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
         }
+        
+        print("✅ APPLE TTS: Speech completed")
+    }
+    
+    // MARK: - Testing Methods
+    func testAppleTTS(_ text: String) async {
+        print("🧪 TESTING: Testing Apple TTS directly")
+        await speakWithAppleTTS(text)
+    }
+    
+    func forceAppleTTSMode(_ enabled: Bool) {
+        Self.forceAppleTTS = enabled
+        print("🧪 TESTING: Apple TTS force mode: \(enabled ? "enabled" : "disabled")")
     }
 }
 

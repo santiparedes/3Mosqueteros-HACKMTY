@@ -3,6 +3,7 @@ import SwiftUI
 struct CreditHistoryView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var creditService = CreditService.shared
+    @StateObject private var creditScoringService = CreditScoringService.shared
     @State private var isLoading = false
     
     var body: some View {
@@ -19,7 +20,19 @@ struct CreditHistoryView: View {
                     } else if creditService.creditHistory.isEmpty {
                         emptyStateView
                     } else {
-                        creditHistoryList
+                        ScrollView {
+                            VStack(spacing: 16) {
+                                // Current Credit Score Section
+                                if let currentScore = creditScoringService.currentCreditScore {
+                                    currentCreditScoreSection(currentScore)
+                                }
+                                
+                                // Credit History List
+                                creditHistoryList
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 16)
+                        }
                     }
                 }
             }
@@ -80,16 +93,121 @@ struct CreditHistoryView: View {
         .padding()
     }
     
+    // MARK: - Current Credit Score Section
+    private func currentCreditScoreSection(_ score: CreditScoreResult) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Current Credit Analysis")
+                .font(.headline)
+                .fontWeight(.semibold)
+                .foregroundColor(.nepTextLight)
+            
+            VStack(spacing: 12) {
+                // Score Overview
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Risk Tier")
+                            .font(.caption)
+                            .foregroundColor(.nepTextSecondary)
+                        Text(score.offer.riskTier)
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(riskTierColor(score.offer.riskTier))
+                    }
+                    
+                    Spacer()
+                    
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text("PD90 Score")
+                            .font(.caption)
+                            .foregroundColor(.nepTextSecondary)
+                        Text("\(String(format: "%.1f", score.offer.pd90Score * 100))%")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(pd90ScoreColor(score.offer.pd90Score))
+                    }
+                }
+                
+                Divider()
+                    .background(Color.nepTextSecondary.opacity(0.3))
+                
+                // Credit Details
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Credit Limit")
+                            .font(.caption)
+                            .foregroundColor(.nepTextSecondary)
+                        Text("$\(Int(score.offer.creditLimit))")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundColor(.nepTextLight)
+                    }
+                    
+                    Spacer()
+                    
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text("APR")
+                            .font(.caption)
+                            .foregroundColor(.nepTextSecondary)
+                        Text("\(Int(score.offer.apr * 100))%")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundColor(.nepTextLight)
+                    }
+                    
+                    Spacer()
+                    
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text("Confidence")
+                            .font(.caption)
+                            .foregroundColor(.nepTextSecondary)
+                        Text("\(String(format: "%.0f", score.offer.confidence * 100))%")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundColor(.blue)
+                    }
+                }
+                
+                // Model Info
+                HStack {
+                    Image(systemName: "brain.head.profile")
+                        .foregroundColor(.blue)
+                        .frame(width: 16)
+                    
+                    Text("Model: \(score.modelVersion)")
+                        .font(.caption)
+                        .foregroundColor(.nepTextSecondary)
+                    
+                    Spacer()
+                    
+                    Text(DateFormatter.localizedString(from: score.scoredAt, dateStyle: .short, timeStyle: .short))
+                        .font(.caption)
+                        .foregroundColor(.nepTextSecondary)
+                }
+                
+                // Explanation
+                Text(score.offer.explanation)
+                    .font(.caption)
+                    .foregroundColor(.nepTextSecondary)
+                    .padding(.top, 4)
+            }
+            .padding(16)
+            .background(Color.nepCardBackground.opacity(0.1))
+            .cornerRadius(16)
+        }
+    }
+    
     // MARK: - Credit History List
     private var creditHistoryList: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                ForEach(creditService.creditHistory) { history in
-                    CreditHistoryDetailRow(history: history)
-                }
+        VStack(spacing: 16) {
+            Text("Credit Applications")
+                .font(.headline)
+                .fontWeight(.semibold)
+                .foregroundColor(.nepTextLight)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            
+            ForEach(creditService.creditHistory) { history in
+                CreditHistoryDetailRow(history: history)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
         }
     }
     
@@ -214,6 +332,19 @@ struct CreditHistoryDetailRow: View {
             return .red
         default:
             return .gray
+        }
+    }
+    
+    private func pd90ScoreColor(_ score: Double) -> Color {
+        // PD90 score is probability of default in 90 days (lower is better)
+        if score < 0.05 { // Less than 5%
+            return .green
+        } else if score < 0.15 { // Less than 15%
+            return .blue
+        } else if score < 0.30 { // Less than 30%
+            return .orange
+        } else {
+            return .red
         }
     }
 }

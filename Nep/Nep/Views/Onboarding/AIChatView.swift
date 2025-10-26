@@ -8,27 +8,29 @@ struct AIChatView: View {
     @State private var currentMessage = ""
     @State private var isTyping = false
     @State private var isListening = false
+    @State private var isInVoiceMode = false
+    @State private var currentConfirmationStep = 0
     @State private var showDataCard = false
     @State private var isDataConfirmed = false
-    @State private var showPhotoCapture = false
     @State private var showWelcomeScreen = false
-    @State private var userPhoto: UIImage?
     @State private var currentOCRResults: OCRResults
     @State private var isCorrectingData = false
     @State private var typingText = ""
     @State private var currentTypingMessage = ""
     @State private var isTextFieldFocused = false
     @State private var typingTask: Task<Void, Never>?
+    @State private var textAnimationOffset: CGFloat = 0
+    @State private var isAnimatingText = false
+    @State private var textLines: [String] = []
+    @State private var animationID = UUID()
     
     let ocrResults: OCRResults
     let onDataConfirmed: (OCRResults) -> Void
-    let onPhotoCaptured: (UIImage) -> Void
     let onComplete: () -> Void
     
-    init(ocrResults: OCRResults, onDataConfirmed: @escaping (OCRResults) -> Void, onPhotoCaptured: @escaping (UIImage) -> Void, onComplete: @escaping () -> Void) {
+    init(ocrResults: OCRResults, onDataConfirmed: @escaping (OCRResults) -> Void, onComplete: @escaping () -> Void) {
         self.ocrResults = ocrResults
         self.onDataConfirmed = onDataConfirmed
-        self.onPhotoCaptured = onPhotoCaptured
         self.onComplete = onComplete
         self._currentOCRResults = State(initialValue: ocrResults)
     }
@@ -53,7 +55,7 @@ struct AIChatView: View {
                 // Top section with text input and AI response
                 VStack(spacing: 20) {
                     // Text input field (when in keyboard mode)
-                    if !isListening {
+                    if !isInVoiceMode {
                         TextField("Type your response...", text: $currentMessage, axis: .vertical)
                             .font(.system(size: 24, weight: .bold))
                             .foregroundStyle(
@@ -84,8 +86,8 @@ struct AIChatView: View {
                     if isTyping {
                         if !typingText.isEmpty {
                             // Show typing animation
-                            Text(typingText)
-                                .font(.system(size: 38, weight: .medium))
+                            AnimatedTextDisplay(text: typingText)
+                                .font(.system(size: 34, weight: .medium))
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal, 20)
                                 .padding(.vertical, 20)
@@ -109,6 +111,30 @@ struct AIChatView: View {
                                     )
                                 )
                         }
+                    } else if isListening {
+                        // Show listening indicator
+                        Text("Listening...")
+                            .font(.system(size: 34, weight: .medium))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 20)
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [.green.opacity(0.8), .green.opacity(0.6), .green.opacity(0.4)],
+                                    startPoint: .bottomLeading,
+                                    endPoint: .topTrailing
+                                )
+                            )
+                            .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: isListening)
+                            .onAppear {
+                                print("🎤 UI: Listening indicator appeared - isListening: \(isListening)")
+                            }
+                            .onChange(of: isListening) { newValue in
+                                print("🎤 UI: Listening state changed to: \(newValue)")
+                            }
+                            .onChange(of: isInVoiceMode) { newValue in
+                                print("🎤 UI: Voice mode changed to: \(newValue)")
+                            }
                     } else if let lastAIMessage = messages.last(where: { !$0.isUser }) {
                         Text(lastAIMessage.text)
                             .font(.system(size: 38, weight: .medium))
@@ -134,39 +160,22 @@ struct AIChatView: View {
         }
         .onAppear {
             startConversation()
+            setupVoiceResponseHandling()
         }
         .onDisappear {
             typingTask?.cancel()
         }
-        .fullScreenCover(isPresented: $showPhotoCapture) {
-            PhotoCaptureView { photo in
-                print("DEBUG: Photo captured in AIChatView, showing welcome screen")
-                print("DEBUG: showPhotoCapture = \(showPhotoCapture)")
-                print("DEBUG: showWelcomeScreen = \(showWelcomeScreen)")
-                userPhoto = photo
-                showPhotoCapture = false
-                showWelcomeScreen = true
-                print("DEBUG: After setting - showPhotoCapture = \(showPhotoCapture), showWelcomeScreen = \(showWelcomeScreen)")
-            }
-        }
         .sheet(isPresented: $showDataCard) {
+            if !APIConfig.isVoiceModeAvailable {
             dataConfirmationSheet
-        }
-        .fullScreenCover(isPresented: $showPhotoCapture) {
-            PhotoCaptureView { photo in
-                print("DEBUG: Photo captured in AIChatView, showing welcome screen")
-                print("DEBUG: showPhotoCapture = \(showPhotoCapture)")
-                print("DEBUG: showWelcomeScreen = \(showWelcomeScreen)")
-                userPhoto = photo
-                showPhotoCapture = false
-                showWelcomeScreen = true
-                print("DEBUG: After setting - showPhotoCapture = \(showPhotoCapture), showWelcomeScreen = \(showWelcomeScreen)")
+            } else {
+                // Empty view when using voice mode
+                EmptyView()
             }
         }
         .fullScreenCover(isPresented: $showWelcomeScreen) {
             WelcomeCompletionView(
                 userName: currentOCRResults.firstName,
-                userPhoto: userPhoto,
                 onComplete: {
                     print("DEBUG: WelcomeCompletionView onComplete called")
                     showWelcomeScreen = false
@@ -184,28 +193,29 @@ struct AIChatView: View {
                 Button(action: {
                     // Switch to voice mode
                     print("DEBUG: Voice mode button tapped")
-                    isListening = true
-                    startListening()
+                    isInVoiceMode = true
+                    // Don't auto-start listening, just switch to mic mode
                 }) {
                     Image(systemName: "mic.fill")
                         .font(.system(size: 16, weight: .medium))
                         .frame(width: 44, height: 44)
                         .foregroundStyle(
                             LinearGradient(
-                                colors: isListening ? [.white, .white.opacity(0.8)] : [.white.opacity(0.6), .white.opacity(0.4)],
+                                colors: isInVoiceMode ? [.white, .white.opacity(0.8)] : [.white.opacity(0.6), .white.opacity(0.4)],
                                 startPoint: .bottomLeading,
                                 endPoint: .topTrailing
                             )
                         )
                         .background(
                             Circle()
-                                .fill(isListening ? Color.purple.opacity(0.8) : Color.white.opacity(0.1))
+                                .fill(isInVoiceMode ? Color.purple.opacity(0.8) : Color.white.opacity(0.1))
                         )
                 }
                 
                 Button(action: {
                     // Switch to keyboard mode
                     print("DEBUG: Keyboard mode button tapped")
+                    isInVoiceMode = false
                     isListening = false
                     stopListening()
                 }) {
@@ -214,14 +224,14 @@ struct AIChatView: View {
                         .frame(width: 44, height: 44)
                         .foregroundStyle(
                             LinearGradient(
-                                colors: !isListening ? [.white, .white.opacity(0.8)] : [.white.opacity(0.6), .white.opacity(0.4)],
+                                colors: !isInVoiceMode ? [.white, .white.opacity(0.8)] : [.white.opacity(0.6), .white.opacity(0.4)],
                                 startPoint: .bottomLeading,
                                 endPoint: .topTrailing
                             )
                         )
                         .background(
                             Circle()
-                                .fill(!isListening ? Color.purple.opacity(0.8) : Color.white.opacity(0.1))
+                                .fill(!isInVoiceMode ? Color.purple.opacity(0.8) : Color.white.opacity(0.1))
                         )
                 }
             }
@@ -236,15 +246,17 @@ struct AIChatView: View {
             // Right side - Main action button (moved to corner)
             Button(action: {
                 print("DEBUG: Main action button tapped")
+                if isInVoiceMode {
                 if isListening {
                     print("DEBUG: Currently listening, stopping...")
                     stopListening()
+                    } else {
+                        print("DEBUG: Starting to listen...")
+                        startListening()
+                    }
                 } else if !currentMessage.isEmpty {
                     print("DEBUG: Has message, sending...")
                     sendMessage()
-                } else {
-                    print("DEBUG: No message, starting to listen...")
-                    startListening()
                 }
             }) {
                 ZStack {
@@ -252,16 +264,22 @@ struct AIChatView: View {
                         .fill(Color.white)
                         .frame(width: 60, height: 60)
                     
+                    if isInVoiceMode {
                     if isListening {
                         Image(systemName: "stop.fill")
                             .font(.system(size: 24, weight: .bold))
                             .foregroundColor(.red)
+                        } else {
+                            Image(systemName: "mic.fill")
+                                .font(.system(size: 24, weight: .bold))
+                                .foregroundColor(.blue)
+                        }
                     } else if !currentMessage.isEmpty {
                         Image(systemName: "arrow.up")
                             .font(.system(size: 24, weight: .bold))
                             .foregroundColor(.blue)
                     } else {
-                        Image(systemName: "mic.fill")
+                        Image(systemName: "keyboard")
                             .font(.system(size: 24, weight: .bold))
                             .foregroundColor(.blue)
                     }
@@ -533,17 +551,36 @@ struct AIChatView: View {
     }
     
     private func startConversation() {
-        // Add initial AI message
-        let welcomeMessage = ChatMessage(
-            id: UUID(),
-            text: "Hello! I'm your Nep assistant. I've extracted the information from your ID and want to verify that everything is correct with you.",
-            isUser: false,
-            timestamp: Date()
-        )
-        messages.append(welcomeMessage)
+        // Reset confirmation step counter
+        currentConfirmationStep = 0
         
-        // Show data card immediately
+        // Add initial AI message with animation and audio
+        let welcomeText = "Hello! I'm your Nep assistant. I've extracted the information from your ID and want to verify that everything is correct with you."
+        
+        // Start typing animation and audio immediately
+        isTyping = true
+        currentTypingMessage = welcomeText
+        typingText = welcomeText  // Set the text directly for AnimatedTextDisplay
+
+        // Start audio immediately when animation starts
+        Task {
+            await elevenLabsService.speak(welcomeText)
+        }
+        
+        // Show data card only if voice mode is not available
+        if !APIConfig.isVoiceModeAvailable {
         showDataCard = true
+        }
+        
+        // If voice mode is available, use voice-based confirmation instead of sheet
+        if APIConfig.isVoiceModeAvailable {
+            print("🎤 VOICE ONBOARDING: Voice mode available (Gemini + Apple TTS), using voice confirmation")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                processDataConfirmation()
+            }
+        } else {
+            print("📱 FALLBACK: Voice mode not available, using sheet confirmation")
+        }
     }
     
     private func addUserMessage(_ text: String) {
@@ -563,73 +600,422 @@ struct AIChatView: View {
         
         isTyping = true
         currentTypingMessage = text
-        typingText = ""
+        typingText = text  // Set the text directly for AnimatedTextDisplay
         
-        // Start typing animation
-        startTypingAnimation(text: text)
+        // Wait for current audio to finish before starting new audio
+        Task {
+            // Check if we're currently speaking and wait for it to finish
+            while elevenLabsService.isSpeaking {
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+            }
+            
+            // Now speak the new text immediately
+            await elevenLabsService.speak(text)
+        }
     }
     
-    private func startTypingAnimation(text: String) {
-        let characters = Array(text)
-        var currentIndex = 0
+    
+    @State private var isProcessingConfirmation = false
+    
+    private func processDataConfirmation() {
+        // Prevent multiple simultaneous calls
+        guard !isProcessingConfirmation else {
+            print("🎤 VOICE ONBOARDING: Already processing confirmation, ignoring duplicate call")
+            return
+        }
         
-        typingTask = Task {
-            for (index, character) in characters.enumerated() {
-                // Check if task was cancelled
-                if Task.isCancelled {
-                    return
+        isProcessingConfirmation = true
+        print("🎤 VOICE ONBOARDING: Starting voice-based data confirmation (Step \(currentConfirmationStep))")
+        
+        // Update ElevenLabs with current OCR results
+        elevenLabsService.updateOCRResults(currentOCRResults)
+        
+        // Generate voice confirmation message using Gemini
+        Task {
+            let confirmationMessage = await generateDataConfirmationMessage()
+            print("🎤 VOICE ONBOARDING: Generated confirmation message: \(confirmationMessage)")
+            
+            // Add the message to chat (this will handle speaking with proper queuing)
+            await MainActor.run {
+                addAIMessage(confirmationMessage)
+            }
+            
+            // Wait for the message to finish speaking before starting voice recognition
+            while elevenLabsService.isSpeaking {
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+            }
+            
+            // Don't automatically start listening - wait for user to click the button
+            print("🎤 VOICE ONBOARDING: Message finished speaking, waiting for user to start listening")
+            
+            // Reset processing flag
+            await MainActor.run {
+                isProcessingConfirmation = false
+            }
+        }
+    }
+    
+    private func generateDataConfirmationMessage() async -> String {
+        print("🤖 GEMINI: Generating data confirmation message for step \(currentConfirmationStep)...")
+        
+        switch currentConfirmationStep {
+        case 0:
+            return await generatePersonalInfoConfirmation()
+        case 1:
+            return await generateAddressConfirmation()
+        case 2:
+            return await generateDocumentDatesConfirmation()
+        default:
+            return await generateFinalConfirmation()
+        }
+    }
+    
+    private func generatePersonalInfoConfirmation() async -> String {
+        // Filter out empty fields and create a clean list
+        var personalInfo: [String] = []
+        
+        if !currentOCRResults.fullName.isEmpty {
+            personalInfo.append("Full Name: \(currentOCRResults.fullName)")
+        }
+        if !currentOCRResults.dateOfBirth.isEmpty {
+            personalInfo.append("Date of Birth: \(currentOCRResults.dateOfBirth)")
+        }
+        if !currentOCRResults.documentNumber.isEmpty {
+            personalInfo.append("Document Number: \(currentOCRResults.documentNumber)")
+        }
+        if !currentOCRResults.curp.isEmpty {
+            personalInfo.append("CURP: \(currentOCRResults.curp)")
+        }
+        if !currentOCRResults.sex.isEmpty {
+            personalInfo.append("Sex: \(translateGender(currentOCRResults.sex))")
+        }
+        
+        let personalInfoText = personalInfo.joined(separator: ", ")
+        
+        let prompt = """
+        You are Nep's voice assistant confirming personal information from an ID.
+        
+        Available Personal Information:
+        \(personalInfoText)
+        
+        Create a conversational message that:
+        1. Goes straight to confirming details (no introduction)
+        2. Lists each field on its own line in a conversational way
+        3. Only mentions: Name, Date of Birth, Sex, and CURP
+        4. Uses natural speech patterns
+        5. Asks if this information is correct
+        6. Keep it conversational, not like a list
+        7. IMPORTANT: Format the date of birth as "May 7th, 2004" (month name, day with ordinal, year)
+        
+        Example: "Let me confirm your details. Your name is [Name], you were born on May 7th, 2004, you're [Sex], and your CURP is [CURP]. Does that all look correct?"
+        """
+        
+        do {
+            let response = try await geminiService.sendGeminiRequest(prompt: prompt)
+            print("✅ GEMINI: Generated personal info confirmation")
+            return response
+        } catch {
+            print("❌ GEMINI: Error generating personal info confirmation: \(error)")
+            let name = currentOCRResults.fullName.isEmpty ? "not available" : currentOCRResults.fullName
+            let dob = currentOCRResults.dateOfBirth.isEmpty ? "not available" : formatDateOfBirth(currentOCRResults.dateOfBirth)
+            let sex = currentOCRResults.sex.isEmpty ? "not available" : translateGender(currentOCRResults.sex)
+            let curp = currentOCRResults.curp.isEmpty ? "not available" : currentOCRResults.curp
+            
+            return "Let me confirm your details. Your name is \(name), you were born on \(dob), you're \(sex), and your CURP is \(curp). Does that all look correct?"
+        }
+    }
+    
+    private func generateAddressConfirmation() async -> String {
+        // Filter out empty fields and create a clean list
+        var addressInfo: [String] = []
+        
+        if !currentOCRResults.state.isEmpty {
+            addressInfo.append("State: \(currentOCRResults.state)")
+        }
+        if !currentOCRResults.municipality.isEmpty {
+            addressInfo.append("Municipality: \(currentOCRResults.municipality)")
+        }
+        if !currentOCRResults.locality.isEmpty {
+            addressInfo.append("Locality: \(currentOCRResults.locality)")
+        }
+        if !currentOCRResults.electoralSection.isEmpty {
+            addressInfo.append("Electoral Section: \(currentOCRResults.electoralSection)")
+        }
+        if !currentOCRResults.address.isEmpty {
+            addressInfo.append("Address: \(currentOCRResults.address)")
+        }
+        
+        let addressInfoText = addressInfo.joined(separator: ", ")
+        
+        let prompt = """
+        You are Nep's voice assistant confirming address information from an ID.
+        
+        Available Address Information:
+        \(addressInfoText)
+        
+        Create a conversational message that:
+        1. Goes straight to confirming address details (no introduction)
+        2. Lists each field in a conversational way
+        3. Only mentions the available address fields
+        4. Uses natural speech patterns
+        5. Asks if this information is correct
+        6. Keep it conversational, not like a list
+        7. If some fields are missing, mention that we'll need to collect them
+        
+        Example: "Now let's confirm your address details. You live in [State], in [Municipality], and your locality is [Locality]. Is this correct?"
+        """
+        
+        do {
+            let response = try await geminiService.sendGeminiRequest(prompt: prompt)
+            print("✅ GEMINI: Generated address confirmation")
+            return response
+        } catch {
+            print("❌ GEMINI: Error generating address confirmation: \(error)")
+            return "Great! Now let's confirm your address information. \(addressInfoText). Is this correct?"
+        }
+    }
+    
+    private func generateDocumentDatesConfirmation() async -> String {
+        // Filter out empty fields and create a clean list
+        var dateInfo: [String] = []
+        
+        if !currentOCRResults.issueDate.isEmpty {
+            dateInfo.append("Issue Date: \(currentOCRResults.issueDate)")
+        }
+        if !currentOCRResults.expirationDate.isEmpty {
+            dateInfo.append("Expiration Date: \(currentOCRResults.expirationDate)")
+        }
+        
+        let dateInfoText = dateInfo.joined(separator: ", ")
+        
+        let prompt = """
+        You are Nep's voice assistant confirming document dates from an ID.
+        
+        Available Document Dates:
+        \(dateInfoText)
+        
+        Create a conversational message that:
+        1. Goes straight to confirming document dates (no introduction)
+        2. Lists each date in a conversational way
+        3. Only mentions the available dates
+        4. Uses natural speech patterns
+        5. Asks if this information is correct
+        6. Keep it conversational, not like a list
+        7. If some fields are missing, mention that we'll need to collect them
+        
+        Example: "Finally, let's confirm your document dates. Your ID was issued on [Issue Date] and expires on [Expiration Date]. Are these dates correct?"
+        """
+        
+        do {
+            let response = try await geminiService.sendGeminiRequest(prompt: prompt)
+            print("✅ GEMINI: Generated document dates confirmation")
+            return response
+        } catch {
+            print("❌ GEMINI: Error generating document dates confirmation: \(error)")
+            return "Perfect! Finally, let's confirm your document dates. \(dateInfoText). Are these dates correct?"
+        }
+    }
+    
+    private func generateFinalConfirmation() async -> String {
+        return "Excellent! All your information has been confirmed. Your account setup is now complete. Welcome to Nep!"
+    }
+    
+    private func startVoiceConfirmation() async {
+        print("🎤 VOICE ONBOARDING: Starting voice confirmation...")
+        
+        // Set listening state to show "Listening..." text
+        await MainActor.run {
+            isListening = true
+        }
+        
+        do {
+            try await elevenLabsService.startListening()
+            print("✅ VOICE ONBOARDING: Started listening for user response")
+        } catch {
+            print("❌ VOICE ONBOARDING: Error starting voice recognition: \(error)")
+            // Reset listening state on error
+            await MainActor.run {
+                isListening = false
+                showDataCard = true
+            }
+        }
+    }
+    
+    private func setupVoiceResponseHandling() {
+        print("🎤 VOICE ONBOARDING: Setting up voice response handling")
+        
+        // Listen for voice recognition results
+        NotificationCenter.default.addObserver(
+            forName: .voiceRecognitionResult,
+            object: nil,
+            queue: .main
+        ) { notification in
+            if let userResponse = notification.userInfo?["text"] as? String {
+                print("🎤 VOICE ONBOARDING: Received voice response: \(userResponse)")
+                print("🗣️ USER SAID: '\(userResponse)'")
+                
+                // Add user's speech to chat for debugging
+                addUserMessage(userResponse)
+                
+                handleVoiceResponse(userResponse)
+            }
+        }
+    }
+    
+    private func handleVoiceResponse(_ response: String) {
+        print("🎤 VOICE ONBOARDING: Processing voice response: \(response)")
+        
+        let lowercasedResponse = response.lowercased()
+        
+        if lowercasedResponse.contains("yes") || lowercasedResponse.contains("correct") || lowercasedResponse.contains("right") {
+            print("✅ VOICE ONBOARDING: User confirmed step \(currentConfirmationStep)")
+            
+            // Move to next step
+            currentConfirmationStep += 1
+            
+            if currentConfirmationStep < 3 {
+                // Continue to next step
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    self.processDataConfirmation()
+                }
+            } else {
+                // All steps completed
+                handleDataConfirmed()
+            }
+        } else if lowercasedResponse.contains("no") || lowercasedResponse.contains("wrong") || lowercasedResponse.contains("error") {
+            print("❌ VOICE ONBOARDING: User says data has errors")
+            handleDataErrors()
+        } else {
+            print("❓ VOICE ONBOARDING: Unclear response, asking for clarification")
+            Task {
+                // Use Gemini to generate a clarification response
+                let clarificationPrompt = """
+                You are Nep's voice assistant. The user said: "\(response)"
+                
+                This was unclear. Generate a friendly clarification message that:
+                1. Acknowledges you didn't understand clearly
+                2. Asks them to say "yes" if the data is correct or "no" if there are errors
+                3. Uses natural speech patterns
+                4. Keep it conversational and encouraging
+                5. Keep it short and clear
+                
+                Example: "I didn't quite catch that. Please say 'yes' if the information is correct, or 'no' if you need to make corrections."
+                """
+                
+                do {
+                    let clarificationMessage = try await geminiService.sendGeminiRequest(prompt: clarificationPrompt)
+                    print("🤖 GEMINI: Generated clarification: \(clarificationMessage)")
+                    
+                    // Add Gemini's response to chat
+                    await MainActor.run {
+                        addAIMessage(clarificationMessage)
+                    }
+                    
+                    // Speak the clarification
+                    await elevenLabsService.speak(clarificationMessage)
+                } catch {
+                    print("❌ GEMINI: Error generating clarification: \(error)")
+                    // Fallback message
+                    await elevenLabsService.speak("I didn't quite catch that. Please say 'yes' if the information is correct, or 'no' if you need to make corrections.")
+                }
+            }
+        }
+    }
+    
+    private func handleDataConfirmed() {
+        print("✅ VOICE ONBOARDING: Data confirmed, proceeding to completion")
+        
+        Task {
+            // Use Gemini to generate confirmation message
+            let confirmationPrompt = """
+            You are Nep's voice assistant. The user has confirmed that their ID data is correct. Generate a friendly confirmation message that:
+            1. Congratulates them on completing the verification
+            2. Lets them know their account setup is complete
+            3. Welcomes them to Nep
+            4. Uses natural speech patterns
+            5. Keep it conversational and encouraging
+            6. Keep it concise and positive
+            
+            Example: "Perfect! All your information has been confirmed. Your account setup is now complete. Welcome to Nep!"
+            """
+            
+            do {
+                let confirmationMessage = try await geminiService.sendGeminiRequest(prompt: confirmationPrompt)
+                print("🤖 GEMINI: Generated confirmation: \(confirmationMessage)")
+                
+                // Add Gemini's response to chat
+                await MainActor.run {
+                    addAIMessage(confirmationMessage)
                 }
                 
-                // Check if this is still the current message being typed
-                if currentTypingMessage != text {
-                    return
+                // Speak the confirmation
+                await elevenLabsService.speak(confirmationMessage)
+                
+                // Wait for the audio to finish before showing welcome screen
+                while elevenLabsService.isSpeaking {
+                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
                 }
                 
                 await MainActor.run {
-                    typingText += String(character)
+                    showWelcomeScreen = true
+                }
+            } catch {
+                print("❌ GEMINI: Error generating confirmation: \(error)")
+                // Fallback message
+                await elevenLabsService.speak("Perfect! The data is correct. Your profile is now complete!")
+                
+                // Wait for the audio to finish before showing welcome screen
+                while elevenLabsService.isSpeaking {
+                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
                 }
                 
-                // Type at different speeds for different characters
-                let delay = character == " " ? 0.1 : 0.05
-                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
-            }
-            
-            // Check if task was cancelled before completing
-            if Task.isCancelled || currentTypingMessage != text {
-                return
-            }
-            
-            // Typing complete, add to messages after a pause
-            try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-            
-            await MainActor.run {
-                // Double-check this is still the current message
-                if currentTypingMessage == text {
-                    let message = ChatMessage(
-                        id: UUID(),
-                        text: text,
-                        isUser: false,
-                        timestamp: Date()
-                    )
-                    messages.append(message)
-                    isTyping = false
-                    typingText = ""
-                    currentTypingMessage = ""
+                await MainActor.run {
+                    showWelcomeScreen = true
                 }
             }
         }
     }
     
-    private func processDataConfirmation() {
-        addAIMessage("Perfect! The data is correct. Now I need a photo of you to complete your profile.")
+    private func handleDataErrors() {
+        print("❌ VOICE ONBOARDING: Data has errors, starting correction process")
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
-            showPhotoCapture = true
+        Task {
+            // Use Gemini to generate error handling message
+            let errorPrompt = """
+            You are Nep's voice assistant. The user has indicated there are errors in their ID data. Generate a friendly message that:
+            1. Acknowledges their concern about the data
+            2. Asks them to tell you what information is incorrect
+            3. Asks them how it should be corrected
+            4. Uses natural speech patterns
+            5. Be understanding and helpful
+            6. Keep it conversational and encouraging
+            
+            Example: "I understand there are errors in the data. Please tell me what information is incorrect and how it should be corrected."
+            """
+            
+            do {
+                let errorMessage = try await geminiService.sendGeminiRequest(prompt: errorPrompt)
+                print("🤖 GEMINI: Generated error message: \(errorMessage)")
+                
+                // Add Gemini's response to chat
+                await MainActor.run {
+                    addAIMessage(errorMessage)
+                }
+                
+                // Speak the error message
+                await elevenLabsService.speak(errorMessage)
+                
+                // Start listening for correction details
+                try? await elevenLabsService.startListening()
+            } catch {
+                print("❌ GEMINI: Error generating error message: \(error)")
+                // Fallback message
+                await elevenLabsService.speak("I understand there are errors in the data. Please tell me what information is incorrect and how it should be.")
+                
+                // Start listening for correction details
+                try? await elevenLabsService.startListening()
+            }
         }
-    }
-    
-    private func processUserCorrection() {
-        addAIMessage("I understand, there are errors in the data. Please tell me what information is incorrect and how it should be.")
     }
     
     private func startListening() {
@@ -637,20 +1023,17 @@ struct AIChatView: View {
         isListening = true
         print("DEBUG: isListening set to true")
         
-        // TODO: Implement real voice recognition
-        // For now, simulate voice input after 3 seconds for testing
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-            print("DEBUG: Simulating voice input after 3 seconds")
+        // Use real voice recognition through ElevenLabs service
+        Task {
+            do {
+                try await elevenLabsService.startListening()
+                print("✅ VOICE: Started real voice recognition")
+            } catch {
+                print("❌ VOICE: Error starting voice recognition: \(error)")
+                await MainActor.run {
             isListening = false
-            print("DEBUG: isListening set to false")
-            
-            // Simulate what the user said - put it in the text input field
-            let simulatedVoiceInput = "The data is correct"
-            print("DEBUG: Simulated voice input: '\(simulatedVoiceInput)'")
-            currentMessage = simulatedVoiceInput
-            
-            // Add confirmation step before proceeding
-            addAIMessage("Are you sure the data is correct? Answer 'yes' to continue or 'no' to correct.")
+                }
+            }
         }
     }
     
@@ -658,6 +1041,9 @@ struct AIChatView: View {
         print("DEBUG: stopListening() called")
         isListening = false
         print("DEBUG: isListening set to false")
+        
+        // Also stop the ElevenLabs service
+        elevenLabsService.stopListening()
     }
     
     private func sendMessage() {
@@ -676,11 +1062,18 @@ struct AIChatView: View {
         if lowercasedMessage.contains("yes") || lowercasedMessage.contains("sí") || lowercasedMessage.contains("si") {
             print("DEBUG: User confirmed data is correct")
             isDataConfirmed = true
-            addAIMessage("Perfect! The data is confirmed. Now I need a photo of you to complete your profile.")
+            addAIMessage("Perfect! The data is confirmed. Your profile is now complete!")
             
-            DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
-                print("DEBUG: Showing photo capture after confirmation")
-                showPhotoCapture = true
+            // Wait for the AI message to finish speaking before showing welcome screen
+            Task {
+                while elevenLabsService.isSpeaking {
+                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                }
+                
+                await MainActor.run {
+                    print("DEBUG: Showing welcome screen after confirmation")
+                    showWelcomeScreen = true
+                }
             }
             return
         } else if lowercasedMessage.contains("no") || lowercasedMessage.contains("errors") || lowercasedMessage.contains("wrong") {
@@ -745,10 +1138,17 @@ struct AIChatView: View {
     }
     
     private func completeOnboarding() {
-        addAIMessage("¡Excelente! Tu foto se ha capturado correctamente. ¡Bienvenido a Nep, \(currentOCRResults.firstName)!")
+        addAIMessage("¡Excelente! Tu información ha sido verificada correctamente. ¡Bienvenido a Nep, \(currentOCRResults.firstName)!")
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            showWelcomeScreen = true
+        // Wait for the AI message to finish speaking before showing welcome screen
+        Task {
+            while elevenLabsService.isSpeaking {
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+            }
+            
+            await MainActor.run {
+                showWelcomeScreen = true
+            }
         }
     }
 }
@@ -917,452 +1317,121 @@ struct DataRow: View {
     }
 }
 
-// MARK: - Front Camera Manager for Profile Photos
-class FrontCameraManager: NSObject, ObservableObject {
-    private let captureSession = AVCaptureSession()
-    private var photoOutput = AVCapturePhotoOutput()
-    private var previewLayer: AVCaptureVideoPreviewLayer?
-    private var currentCameraInput: AVCaptureDeviceInput?
-    private var currentCameraPosition: AVCaptureDevice.Position = .front
-    private var currentPhotoDelegate: FrontPhotoCaptureDelegate?
+// MARK: - Animated Text Display Component
+// MARK: - Helper Functions
+
+private func formatDateOfBirth(_ dateString: String) -> String {
+    // Parse date string (assuming format like "07/05/2004" or "05/07/2004")
+    let components = dateString.components(separatedBy: "/")
+    guard components.count == 3 else { return dateString }
     
-    @Published var isSessionRunning = false
-    @Published var hasError = false
-    @Published var errorMessage = ""
+    let day = components[0]
+    let month = components[1]
+    let year = components[2]
     
-    override init() {
-        super.init()
-        setupCamera()
+    // Convert month number to month name
+    let monthNames = ["", "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE",
+                     "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"]
+    
+    guard let monthInt = Int(month), monthInt >= 1 && monthInt <= 12 else { return dateString }
+    let monthName = monthNames[monthInt]
+    
+    // Convert day to ordinal (1st, 2nd, 3rd, 4th, etc.)
+    guard let dayInt = Int(day) else { return dateString }
+    let ordinalDay = getOrdinalDay(dayInt)
+    
+    return "\(monthName) \(ordinalDay), \(year)"
+}
+
+private func getOrdinalDay(_ day: Int) -> String {
+    let suffix: String
+    switch day {
+    case 1, 21, 31:
+        suffix = "st"
+    case 2, 22:
+        suffix = "nd"
+    case 3, 23:
+        suffix = "rd"
+    default:
+        suffix = "th"
     }
-    
-    private func setupCamera() {
-        setupCameraWithPosition(.front)
-    }
-    
-    private func setupCameraWithPosition(_ position: AVCaptureDevice.Position) {
-        // Remove existing input
-        if let currentInput = currentCameraInput {
-            captureSession.removeInput(currentInput)
-        }
-        
-        // Get camera for the specified position
-        guard let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: position) else {
-            DispatchQueue.main.async {
-                self.hasError = true
-                self.errorMessage = "Could not access camera"
-            }
-            return
-        }
-        
-        do {
-            let input = try AVCaptureDeviceInput(device: camera)
-            
-            if captureSession.canAddInput(input) {
-                captureSession.addInput(input)
-                currentCameraInput = input
-                
-                // Update position on main thread
-                DispatchQueue.main.async {
-                    self.currentCameraPosition = position
-                }
-            }
-            
-            if captureSession.canAddOutput(photoOutput) {
-                captureSession.addOutput(photoOutput)
-            }
-            
-            // Configure photo output for better quality
-            photoOutput.isHighResolutionCaptureEnabled = true
-            
-        } catch {
-            DispatchQueue.main.async {
-                self.hasError = true
-                self.errorMessage = "Error setting up camera: \(error.localizedDescription)"
-            }
-        }
-    }
-    
-    func startSession() {
-        print("DEBUG: FrontCameraManager.startSession called")
-        guard !captureSession.isRunning else { 
-            print("DEBUG: Front camera session already running, skipping")
-            return 
-        }
-        
-        DispatchQueue.global(qos: .userInitiated).async {
-            print("DEBUG: Starting front camera session on background thread")
-            self.captureSession.startRunning()
-            DispatchQueue.main.async {
-                self.isSessionRunning = true
-                print("DEBUG: Front camera session started, isSessionRunning = \(self.isSessionRunning)")
-            }
-        }
-    }
-    
-    func stopSession() {
-        guard captureSession.isRunning else { return }
-        
-        DispatchQueue.global(qos: .userInitiated).async {
-            self.captureSession.stopRunning()
-            DispatchQueue.main.async {
-                self.isSessionRunning = false
-            }
-        }
-    }
-    
-    func setupPreview(in view: UIView) {
-        previewLayer = AVCaptureVideoPreviewLayer(session: captureSession)
-        previewLayer?.videoGravity = .resizeAspectFill
-        previewLayer?.frame = view.bounds
-        
-        // Mirror the preview for front camera
-        if currentCameraPosition == .front {
-            previewLayer?.transform = CATransform3DMakeScale(-1, 1, 1)
-        } else {
-            previewLayer?.transform = CATransform3DIdentity
-        }
-        
-        if let previewLayer = previewLayer {
-            view.layer.addSublayer(previewLayer)
-        }
-    }
-    
-    func updatePreviewFrame(_ frame: CGRect) {
-        previewLayer?.frame = frame
-    }
-    
-    func capturePhoto(completion: @escaping (UIImage?) -> Void) {
-        print("DEBUG: FrontCameraManager.capturePhoto called")
-        print("DEBUG: Capture session is running: \(captureSession.isRunning)")
-        print("DEBUG: Photo output is available: \(photoOutput != nil)")
-        
-        guard captureSession.isRunning else {
-            print("DEBUG: ERROR - Capture session is not running!")
-            completion(nil)
-            return
-        }
-        
-        let settings = AVCapturePhotoSettings()
-        settings.isHighResolutionPhotoEnabled = true
-        
-        // Get current position on main thread
-        let isFrontCamera = currentCameraPosition == .front
-        print("DEBUG: Is front camera: \(isFrontCamera)")
-        print("DEBUG: Starting photo capture...")
-        
-        // Create delegate and store it to prevent deallocation
-        currentPhotoDelegate = FrontPhotoCaptureDelegate(completion: { [weak self] image in
-            self?.currentPhotoDelegate = nil // Clear the delegate after completion
-            completion(image)
-        }, isFrontCamera: isFrontCamera)
-        
-        photoOutput.capturePhoto(with: settings, delegate: currentPhotoDelegate!)
-        
-        print("DEBUG: Photo capture request sent to output")
-    }
-    
-    func flipCamera() {
-        print("DEBUG: FrontCameraManager.flipCamera called")
-        // Get current position on main thread
-        let currentPosition = currentCameraPosition
-        let newPosition: AVCaptureDevice.Position = currentPosition == .front ? .back : .front
-        print("DEBUG: Flipping from \(currentPosition == .front ? "front" : "back") to \(newPosition == .front ? "front" : "back")")
-        
-        DispatchQueue.global(qos: .userInitiated).async {
-            print("DEBUG: Stopping current session for flip")
-            self.captureSession.stopRunning()
-            
-            print("DEBUG: Setting up camera with new position: \(newPosition == .front ? "front" : "back")")
-            self.setupCameraWithPosition(newPosition)
-            
-            print("DEBUG: Restarting session after flip")
-            self.captureSession.startRunning()
-            
-            DispatchQueue.main.async {
-                // Update preview transform
-                if newPosition == .front {
-                    self.previewLayer?.transform = CATransform3DMakeScale(-1, 1, 1)
-                } else {
-                    self.previewLayer?.transform = CATransform3DIdentity
-                }
-                print("DEBUG: Camera flip completed")
-            }
-        }
-    }
-    
-    func reloadCamera() {
-        print("DEBUG: FrontCameraManager.reloadCamera called")
-        // Get current position on main thread
-        let currentPosition = currentCameraPosition
-        print("DEBUG: Reloading camera with position: \(currentPosition == .front ? "front" : "back")")
-        
-        DispatchQueue.global(qos: .userInitiated).async {
-            print("DEBUG: Stopping current session for reload")
-            self.captureSession.stopRunning()
-            
-            print("DEBUG: Setting up camera with position: \(currentPosition == .front ? "front" : "back")")
-            self.setupCameraWithPosition(currentPosition)
-            
-            print("DEBUG: Restarting session after reload")
-            self.captureSession.startRunning()
-            
-            DispatchQueue.main.async {
-                // Update preview transform
-                if currentPosition == .front {
-                    self.previewLayer?.transform = CATransform3DMakeScale(-1, 1, 1)
-                } else {
-                    self.previewLayer?.transform = CATransform3DIdentity
-                }
-                print("DEBUG: Camera reload completed")
-            }
-        }
+    return "\(day)\(suffix)"
+}
+
+private func translateGender(_ gender: String) -> String {
+    switch gender.lowercased() {
+    case "masculino", "Masculine":
+        return "Masculine"
+    case "femenino", "Feminine":
+        return "Feminine"
+    default:
+        return gender
     }
 }
 
-// MARK: - Front Photo Capture Delegate
-class FrontPhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
-    private let completion: (UIImage?) -> Void
-    private let isFrontCamera: Bool
-    
-    init(completion: @escaping (UIImage?) -> Void, isFrontCamera: Bool = true) {
-        self.completion = completion
-        self.isFrontCamera = isFrontCamera
-    }
-    
-    func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
-        print("DEBUG: FrontPhotoCaptureDelegate.photoOutput called")
-        
-        if let error = error {
-            print("DEBUG: Error capturing photo: \(error.localizedDescription)")
-            completion(nil)
-            return
-        }
-        
-        guard let imageData = photo.fileDataRepresentation(),
-              let image = UIImage(data: imageData) else {
-            print("DEBUG: Failed to get image data from photo")
-            completion(nil)
-            return
-        }
-        
-        print("DEBUG: Photo captured successfully, processing...")
-        
-        // Mirror the image only for front camera (like a selfie)
-        if isFrontCamera {
-            let mirroredImage = UIImage(cgImage: image.cgImage!, scale: image.scale, orientation: .leftMirrored)
-            print("DEBUG: Image mirrored for front camera")
-            completion(mirroredImage)
-        } else {
-            print("DEBUG: Image not mirrored for back camera")
-            completion(image)
-        }
-    }
-}
-
-struct PhotoCaptureView: View {
-    @StateObject private var cameraManager = FrontCameraManager()
-    @State private var capturedImage: UIImage?
-    @State private var showFlash = false
-    @Environment(\.dismiss) private var dismiss
-    
-    let onPhotoCaptured: (UIImage) -> Void
+struct AnimatedTextDisplay: View {
+    let text: String
+    @State private var displayedText = ""
+    @State private var animationTimer: Timer?
+    @State private var hasAnimated = false
     
     var body: some View {
-        ZStack {
-            // Camera preview
-            if cameraManager.isSessionRunning {
-                FrontCameraPreviewView(cameraManager: cameraManager)
-                    .ignoresSafeArea()
+        Text(displayedText)
+            .onAppear {
+                if !hasAnimated {
+                    startTypingAnimation()
+                } else {
+                    // If already animated, just show the full text
+                    displayedText = text
+                }
+            }
+            .onChange(of: text) { _, newValue in
+                // Reset animation for new text
+                hasAnimated = false
+                startTypingAnimation()
+            }
+            .onDisappear {
+                animationTimer?.invalidate()
+            }
+    }
+    
+    private func startTypingAnimation() {
+        // Stop any existing animation
+        animationTimer?.invalidate()
+        
+        // Reset displayed text
+        displayedText = ""
+        hasAnimated = false
+        
+        // Calculate how many lines the full text will have
+        let fullTextLines = text.components(separatedBy: .newlines)
+        let maxLines = 5
+        
+        // Start typing animation with moderate speed
+        var currentIndex = 0
+        animationTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { timer in
+            if currentIndex < text.count {
+                let newText = String(text.prefix(currentIndex + 1))
+                
+                // If the full text will exceed max lines, start removing from top
+                if fullTextLines.count > maxLines {
+                    let lines = newText.components(separatedBy: .newlines)
+                    if lines.count > maxLines {
+                        // Remove the first line and keep the rest
+                        let remainingLines = Array(lines.dropFirst())
+                        displayedText = remainingLines.joined(separator: "\n")
+                    } else {
+                        displayedText = newText
+                    }
+                } else {
+                    displayedText = newText
+                }
+                
+                currentIndex += 1
             } else {
-                Color.black.ignoresSafeArea()
+                timer.invalidate()
+                hasAnimated = true  // Mark as completed
             }
-            
-            // Flash overlay
-            if showFlash {
-                Color.white
-                    .ignoresSafeArea()
-                    .opacity(0.8)
-                    .animation(.easeOut(duration: 0.1), value: showFlash)
-            }
-            
-            VStack {
-                // Header
-                HStack {
-                    Button(action: { dismiss() }) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.white)
-                            .frame(width: 44, height: 44)
-                            .background(Color.black.opacity(0.5))
-                            .cornerRadius(22)
-                    }
-                    
-                    Spacer()
-                    
-                    Text("Tu foto de perfil")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 10)
-                        .background(Color.black.opacity(0.5))
-                        .cornerRadius(20)
-                    
-                    Spacer()
-                    
-                    Button(action: { 
-                        // Reload camera
-                        print("DEBUG: Reload button tapped")
-                        cameraManager.reloadCamera()
-                    }) {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.white)
-                            .frame(width: 44, height: 44)
-                            .background(Color.black.opacity(0.5))
-                            .cornerRadius(22)
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 20)
-                
-                Spacer()
-                
-                // Instructions
-                VStack(spacing: 12) {
-                    Text("Take a clear photo of your face")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.white)
-                        .multilineTextAlignment(.center)
-                    
-                    Text("Look directly at the camera and make sure you have good lighting")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.white.opacity(0.8))
-                        .multilineTextAlignment(.center)
-                }
-                .padding(.horizontal, 40)
-                .padding(.bottom, 40)
-                
-                // Capture button
-                Button(action: capturePhoto) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.white)
-                            .frame(width: 80, height: 80)
-                        
-                        Circle()
-                            .stroke(Color.nepBlue, lineWidth: 4)
-                            .frame(width: 80, height: 80)
-                        
-                        Circle()
-                            .fill(Color.nepBlue)
-                            .frame(width: 60, height: 60)
-                    }
-                }
-                .padding(.bottom, 20)
-                
-                // Camera flip button
-                Button(action: {
-                    print("DEBUG: Camera flip button tapped")
-                    cameraManager.flipCamera()
-                }) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "camera.rotate")
-                            .font(.system(size: 16, weight: .medium))
-                        
-                        Text("Switch Camera")
-                            .font(.system(size: 16, weight: .medium))
-                    }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 12)
-                    .background(Color.white.opacity(0.2))
-                    .cornerRadius(20)
-                }
-                .padding(.bottom, 50)
-            }
-        }
-        .onAppear {
-            print("DEBUG: PhotoCaptureView appeared, starting camera session")
-            cameraManager.startSession()
-        }
-        .onDisappear {
-            print("DEBUG: PhotoCaptureView disappeared, stopping camera session")
-            cameraManager.stopSession()
-        }
-    }
-    
-    private func capturePhoto() {
-        print("DEBUG: Profile photo capture button tapped")
-        
-        // Flash animation
-        withAnimation(.easeInOut(duration: 0.1)) {
-            showFlash = true
-        }
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            withAnimation(.easeOut(duration: 0.1)) {
-                showFlash = false
-            }
-        }
-        
-        print("DEBUG: Calling cameraManager.capturePhoto")
-        cameraManager.capturePhoto { image in
-            print("DEBUG: Photo capture completion called with image: \(image != nil)")
-            if let image = image {
-                print("DEBUG: Image captured successfully, processing...")
-                // Flip the image horizontally so it shows the user's face as they see it
-                let flippedImage = flipImageHorizontally(image)
-                print("DEBUG: Calling onPhotoCaptured")
-                onPhotoCaptured(flippedImage)
-            } else {
-                print("DEBUG: No image captured")
-            }
-        }
-    }
-    
-    private func flipImageHorizontally(_ image: UIImage) -> UIImage {
-        guard let cgImage = image.cgImage else { return image }
-        
-        let flippedImage = UIImage(cgImage: cgImage, scale: image.scale, orientation: .leftMirrored)
-        return flippedImage
-    }
-}
-
-extension View {
-    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
-        clipShape(RoundedCorner(radius: radius, corners: corners))
-    }
-}
-
-struct RoundedCorner: Shape {
-    var radius: CGFloat = .infinity
-    var corners: UIRectCorner = .allCorners
-
-    func path(in rect: CGRect) -> Path {
-        let path = UIBezierPath(
-            roundedRect: rect,
-            byRoundingCorners: corners,
-            cornerRadii: CGSize(width: radius, height: radius)
-        )
-        return Path(path.cgPath)
-    }
-}
-
-struct FrontCameraPreviewView: UIViewRepresentable {
-    let cameraManager: FrontCameraManager
-    
-    func makeUIView(context: Context) -> UIView {
-        let view = UIView()
-        view.backgroundColor = .black
-        view.contentMode = .scaleAspectFill
-        cameraManager.setupPreview(in: view)
-        return view
-    }
-    
-    func updateUIView(_ uiView: UIView, context: Context) {
-        // Update frame when view size changes
-        DispatchQueue.main.async {
-            cameraManager.updatePreviewFrame(uiView.bounds)
         }
     }
 }
@@ -1371,7 +1440,6 @@ struct FrontCameraPreviewView: UIViewRepresentable {
     AIChatView(
         ocrResults: OCRResults.empty,
         onDataConfirmed: { _ in },
-        onPhotoCaptured: { _ in },
         onComplete: { }
     )
     .preferredColorScheme(.dark)
