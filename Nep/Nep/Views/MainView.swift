@@ -115,7 +115,10 @@ struct QuickActionsGrid: View {
                 }
                 
                 // Credit Score
-                Button(action: { showCreditScore = true }) {
+                Button(action: { 
+                    print("🎯 MainView: Botón Credit Report presionado")
+                    showCreditScore = true 
+                }) {
                     VStack(spacing: 12) {
                         ZStack {
                             Circle()
@@ -427,6 +430,7 @@ struct MainView: View {
                     AllTransactionsView(transactions: viewModel.getRecentTransactions())
                 }
                 .fullScreenCover(isPresented: $showCreditScore) {
+                    let _ = print("🔴 MainView: Abriendo CreditReportView...")
                     CreditReportView()
                 }
             }

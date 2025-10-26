@@ -12,8 +12,23 @@ from typing import List, Optional, Dict, Any
 import json
 import os
 from datetime import datetime
+# Import services
+from services.account_feature_aggregator import AccountFeatureAggregator, AccountFeatures
+
+# Import supabase (opcional, moved after services)
+try:
+    from supabase import create_client
+    SUPABASE_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️ Supabase not available: {e}")
+    SUPABASE_AVAILABLE = False
+    create_client = None
 
 router = APIRouter(prefix="/credit", tags=["Credit Scoring"])
+
+# Configuración de Supabase
+SUPABASE_URL = os.getenv("SUPABASE_URL", "https://aaseaqeolqpjfqkpsuyd.supabase.co")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhc2VhcWVvbHFwamZxa3BzdXlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk1NDIyNDgsImV4cCI6MjA3NTExODI0OH0.FKekZn3VVS1I7FFQFFlwUZ2sTMp50d1X7G3sxFac3ug")
 
 # Load the trained model and scaler
 MODEL_PATH = "models/datasetModel/models/advanced_banking_model.txt"
@@ -178,7 +193,12 @@ def calculate_advanced_features(request: CreditScoreRequest) -> Dict[str, float]
     # 2. Spending Behavior Features
     features['spending_stability'] = 1 / (1 + request.spending_var_6m) if request.spending_var_6m > 0 else 0.5
     features['spending_to_income_ratio'] = request.spending_monthly / request.income_monthly if request.income_monthly > 0 else 0.0
-    features['savings_rate'] = request.savings_rate if request.savings_rate is not None else max(0, (request.income_monthly - request.spending_monthly) / request.income_monthly)
+    if request.savings_rate is not None:
+        features['savings_rate'] = request.savings_rate
+    elif request.income_monthly > 0:
+        features['savings_rate'] = max(0, (request.income_monthly - request.spending_monthly) / request.income_monthly)
+    else:
+        features['savings_rate'] = 0.0
     
     # 3. Debt Management Features
     features['debt_service_ratio'] = request.current_debt / request.income_monthly if request.income_monthly > 0 else 0.0
@@ -192,7 +212,7 @@ def calculate_advanced_features(request: CreditScoreRequest) -> Dict[str, float]
     # 5. Demographic Risk Features
     optimal_age = 35
     features['age_risk_factor'] = abs(request.age - optimal_age) / optimal_age
-    features['income_adequacy'] = request.income_monthly / 3000  # Normalize by minimum wage
+    features['income_adequacy'] = request.income_monthly / 3000 if request.income_monthly > 0 else 0.0  # Normalize by minimum wage
     
     # 6. Composite Risk Scores
     features['financial_health_score'] = request.financial_health_score if request.financial_health_score is not None else (
@@ -419,3 +439,174 @@ async def get_model_info():
         "description": model_metadata.get('description', 'Advanced banking model for credit risk prediction'),
         "pd90_threshold": model_metadata.get('pd90_threshold', 0.3)
     }
+
+@router.post("/score-by-account/{account_id}", response_model=CreditScoreResponse)
+async def score_credit_by_account(account_id: str):
+    """
+    Score crediticio automático desde account_id (Supabase)
+    
+    Flujo:
+    1. Conecta a Supabase
+    2. Extrae transacciones históricas (deposits, purchases, bills)
+    3. Calcula las 9 features básicas automáticamente
+    4. Invoca el modelo de credit scoring
+    5. Guarda el resultado en credit_risk_profiles
+    6. Retorna la oferta de crédito
+    """
+    try:
+        # PASO 1: Agregar features desde Supabase
+        print(f"\n[1/4] Extrayendo features desde Supabase para account_id: {account_id}")
+        
+        with AccountFeatureAggregator() as aggregator:
+            features = aggregator.aggregate_features(account_id)
+        
+        if not features:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No se encontró la cuenta {account_id} o no tiene suficientes datos históricos en Supabase"
+            )
+        
+        # Verificar calidad de datos
+        if features.data_quality_score < 0.3:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Datos insuficientes para evaluar (calidad: {features.data_quality_score:.1%}). "
+                       f"Se requiere al menos 3 meses de historial de transacciones."
+            )
+        
+        print(f"✓ Features extraídas (calidad: {features.data_quality_score:.1%})")
+        print(f"  - Ingreso mensual: ${features.income_monthly:,.2f}")
+        print(f"  - DTI: {features.dti:.1%}")
+        print(f"  - Utilización: {features.utilization:.1%}")
+        
+        # PASO 2: Convertir a CreditScoreRequest
+        print(f"\n[2/4] Preparando features para el modelo...")
+        
+        request = CreditScoreRequest(
+            age=features.age,
+            income_monthly=features.income_monthly,
+            payroll_streak=features.payroll_streak,
+            payroll_variance=features.payroll_variance,
+            spending_monthly=features.spending_monthly,
+            spending_var_6m=features.spending_var_6m,
+            current_debt=features.current_debt,
+            dti=features.dti,
+            utilization=features.utilization
+        )
+        
+        # PASO 3: Calcular advanced features y score
+        print(f"\n[3/4] Ejecutando modelo de credit scoring...")
+        
+        # Calcular advanced features
+        advanced_features = calculate_advanced_features(request)
+        
+        # Crear feature vector
+        feature_vector = []
+        for feature_name in feature_names:
+            if feature_name in advanced_features:
+                feature_vector.append(advanced_features[feature_name])
+            else:
+                feature_vector.append(0.0)
+        
+        # Normalizar y predecir
+        X = np.array(feature_vector).reshape(1, -1)
+        X_scaled = scaler.transform(X)
+        
+        if model == "mock_model":
+            pd90_score = calculate_mock_pd90_score(advanced_features)
+        else:
+            pd90_score = model.predict(X_scaled)[0]
+        
+        # Generar oferta de crédito
+        offer = generate_credit_offer(pd90_score, advanced_features, features.customer_id)
+        
+        print(f"✓ Score calculado: PD90={pd90_score:.3f}, Tier={offer.risk_tier}")
+        
+        # PASO 4: Guardar resultado en Supabase (credit_risk_profiles)
+        print(f"\n[4/4] Guardando resultado en Supabase...")
+        
+        try:
+            supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+            
+            profile_data = {
+                'customer_id': features.customer_id,
+                'pd90_score': float(pd90_score),
+                'risk_tier': offer.risk_tier,
+                'credit_limit': float(offer.credit_limit),
+                'apr': float(offer.apr),
+                'msi_eligible': offer.msi_eligible,
+                'msi_months': offer.msi_months,
+                'explanation': offer.explanation,
+                'actual_label': None
+            }
+            
+            response = supabase.table('credit_risk_profiles').insert(profile_data).execute()
+            
+            print(f"✓ Resultado guardado en Supabase")
+            
+        except Exception as db_error:
+            print(f"⚠ Warning: No se pudo guardar en credit_risk_profiles: {str(db_error)}")
+            # No fallar si no se puede guardar, continuar con la respuesta
+        
+        # Retornar respuesta
+        return CreditScoreResponse(
+            success=True,
+            offer=offer,
+            model_version=model_metadata.get('model_type', 'advanced_banking_v1.0')
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error scoring credit: {str(e)}"
+        )
+
+
+@router.get("/account/{account_id}/features")
+async def get_account_features_endpoint(account_id: str):
+    """Endpoint de debug para ver las features extraídas de Supabase sin ejecutar el modelo"""
+    try:
+        with AccountFeatureAggregator() as aggregator:
+            features = aggregator.aggregate_features(account_id)
+        
+        if not features:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No se encontró la cuenta {account_id} en Supabase"
+            )
+        
+        return {
+            "account_id": features.account_id,
+            "customer_id": features.customer_id,
+            "features": {
+                "age": features.age,
+                "income_monthly": features.income_monthly,
+                "payroll_streak": features.payroll_streak,
+                "payroll_variance": features.payroll_variance,
+                "spending_monthly": features.spending_monthly,
+                "spending_var_6m": features.spending_var_6m,
+                "current_debt": features.current_debt,
+                "dti": features.dti,
+                "utilization": features.utilization
+            },
+            "metadata": {
+                "data_quality_score": features.data_quality_score,
+                "months_of_history": features.months_of_history,
+                "quality_status": "excellent" if features.data_quality_score > 0.8 
+                                else "good" if features.data_quality_score > 0.5
+                                else "fair" if features.data_quality_score > 0.3
+                                else "insufficient"
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error extracting features from Supabase: {str(e)}"
+        )

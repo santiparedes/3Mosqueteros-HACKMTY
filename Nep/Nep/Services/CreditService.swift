@@ -19,6 +19,79 @@ class CreditService: ObservableObject {
     
     // MARK: - Credit Scoring
     
+    /// Score credit by account ID (new automatic endpoint)
+    func scoreCreditByAccount(accountId: String) async throws -> CreditOffer {
+        print("🔵 CreditService: Iniciando score crediticio para account: \(accountId)")
+        
+        isLoading = true
+        errorMessage = nil
+        
+        defer {
+            DispatchQueue.main.async {
+                self.isLoading = false
+            }
+        }
+        
+        let hardcodedURL = "http://localhost:8004"
+        guard let url = URL(string: "\(hardcodedURL)/credit/score-by-account/\(accountId)") else {
+            print("❌ CreditService: URL inválida")
+            throw CreditServiceError.invalidURL
+        }
+        
+        print("📡 CreditService: Enviando request a \(url.absoluteString)")
+        
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        do {
+            let (data, response) = try await URLSession.shared.data(for: urlRequest)
+            print("📥 CreditService: Respuesta recibida")
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                print("❌ CreditService: Respuesta HTTP inválida")
+                throw CreditServiceError.invalidResponse
+            }
+            
+            print("📊 CreditService: Status code: \(httpResponse.statusCode)")
+            
+            guard httpResponse.statusCode == 200 else {
+                let errorData = try? JSONDecoder().decode([String: String].self, from: data)
+                let errorMessage = errorData?["detail"] ?? "Unknown error"
+                print("❌ CreditService: Error del servidor - \(errorMessage)")
+                throw CreditServiceError.serverError(errorMessage)
+            }
+            
+            let creditResponse = try JSONDecoder().decode(CreditScoreResponse.self, from: data)
+            print("✅ CreditService: Response decodificado - success: \(creditResponse.success)")
+            
+            guard creditResponse.success, let offer = creditResponse.offer else {
+                print("❌ CreditService: Scoring falló - \(creditResponse.errorMessage ?? "Unknown error")")
+                throw CreditServiceError.scoringFailed(creditResponse.errorMessage ?? "Unknown error")
+            }
+            
+            print("🎉 CreditService: Score exitoso!")
+            print("   - Risk Tier: \(offer.riskTier)")
+            print("   - Credit Limit: $\(offer.creditLimit)")
+            print("   - APR: \(offer.apr * 100)%")
+            print("   - PD90 Score: \(offer.pd90Score)")
+            
+            DispatchQueue.main.async {
+                self.currentOffer = offer
+            }
+            
+            return offer
+            
+        } catch {
+            print("❌ CreditService: Error en scoreCreditByAccount - \(error.localizedDescription)")
+            if error is CreditServiceError {
+                throw error
+            } else {
+                throw CreditServiceError.networkError(error.localizedDescription)
+            }
+        }
+    }
+    
     func scoreCredit(for user: DemoUser) async throws -> CreditOffer {
         isLoading = true
         errorMessage = nil
@@ -29,17 +102,12 @@ class CreditService: ObservableObject {
             }
         }
         
-        // Create credit score request from user data
-        let request = createCreditScoreRequest(from: user)
+        // Get the current account ID from BankingViewModel
+        let bankingViewModel = BankingViewModel()
+        let accountId = bankingViewModel.accounts.first?.id ?? "275b3406-0803-4415-8b0e-"
         
-        // Make API call
-        let response = try await performCreditScoreRequest(request)
-        
-        DispatchQueue.main.async {
-            self.currentOffer = response.offer
-        }
-        
-        return response.offer!
+        // Use the new automatic endpoint
+        return try await scoreCreditByAccount(accountId: accountId)
     }
     
     func scoreCreditWithCustomData(_ request: CreditScoreRequest) async throws -> CreditOffer {

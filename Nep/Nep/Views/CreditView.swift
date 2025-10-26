@@ -38,6 +38,12 @@ struct CreditView: View {
             .sheet(isPresented: $showingCreditHistory) {
                 CreditHistoryView()
             }
+            .onAppear {
+                // Automatically call credit scoring on app load
+                Task {
+                    await refreshCreditScore()
+                }
+            }
         }
     }
     
