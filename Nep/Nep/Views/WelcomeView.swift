@@ -19,28 +19,33 @@ struct WelcomeView: View {
                 .ignoresSafeArea()
             
             VStack(spacing: 40) {
+              
+                Spacer()
+                Spacer()
+                Spacer()
                 Spacer()
                 
                 // Logo and NEP text
                 VStack(spacing: 20) {
                     // NEP Text with custom font
                     if showNEP {
-                        Text("Nep")
-                            .font(.custom("BrunoACESC-regular", size: 48))
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
+                        Image("NEP")
+                            .resizable(resizingMode: .stretch)
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 75, height: 75)
                             .transition(.asymmetric(
-                                insertion: .scale(scale: 0.5).combined(with: .opacity),
-                                removal: .scale(scale: 0.5).combined(with: .opacity)
+                                insertion: .move(edge: .bottom).combined(with: .opacity),
+                                removal: .move(edge: .bottom).combined(with: .opacity)
                             ))
                     }
+                    
                     
                     // Star logo
                     if showLogo {
                         ZStack {
                             Circle()
                                 .fill(Color.nepBlue)
-                                .frame(width: 120, height: 120)
+                                .frame(width: 130, height: 130)
                             
                             Image("Star")
                                 .resizable(resizingMode: .stretch)
@@ -56,102 +61,93 @@ struct WelcomeView: View {
                         .transition(.asymmetric(
                             insertion: .scale(scale: 0.5).combined(with: .opacity),
                             removal: .scale(scale: 0.5).combined(with: .opacity)
-                                
                         ))
                     }
                     
                     // Main content
                     if showContent {
                         VStack(spacing: 16) {
-                            Text("TOMORROW'S BANKING IS HERE")
-                                .font(.system(size: 28, weight: .bold))
-                                .multilineTextAlignment(.center)
-                                .foregroundColor(.white)
                             
                         }
+                    }
+                    
+                    Spacer()
+                    
+                    // Action buttons
+                    if showButtons {
+                        VStack(spacing: 16) {
+                            // Try Face ID button (if biometric is available)
+                            if biometricService.isAvailable {
+                                Button(action: {
+                                    attemptBiometricAuthentication()
+                                }) {
+                                    HStack(spacing: 12) {
+                                        Image(systemName: biometricService.biometricIcon)
+                                            .font(.system(size: 20, weight: .semibold))
+                                        
+                                        Text("Try \(biometricService.biometricTypeString)")
+                                            .font(.system(size: 18, weight: .semibold))
+                                    }
+                                    .foregroundColor(.nepBlue)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 56)
+                                    .background(Color.nepBlue.opacity(0.1))
+                                    .cornerRadius(28)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 28)
+                                            .stroke(Color.nepBlue, lineWidth: 2)
+                                    )
+                                }
+                            }
+                            
+                            Button(action: {
+                                // Navigate to registration
+                                withAnimation(.easeInOut(duration: 0.5)) {
+                                    isLoggedIn = true
+                                }
+                            }) {
+                                Text("Become a Customer")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundColor(.nepTextPrimary)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 56)
+                                    .background(Color.white)
+                                    .cornerRadius(28)
+                                    .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+                            }
+                            
+                            Button(action: {
+                                // Navigate to login - go directly to main view
+                                withAnimation(.easeInOut(duration: 0.5)) {
+                                    isLoggedIn = true
+                                    isOnboardingComplete = true
+                                }
+                            }) {
+                                Text("I'm Already a Customer")
+                                    .font(.system(size: 20, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.8))
+                                    .bold()
+                            }
+                        }
+                        .padding(.horizontal, 32)
+                        .padding(.bottom, 30)
                         .transition(.asymmetric(
                             insertion: .move(edge: .bottom).combined(with: .opacity),
                             removal: .move(edge: .bottom).combined(with: .opacity)
                         ))
                     }
                 }
-                
-                Spacer()
-                
-                // Action buttons
-                if showButtons {
-                    VStack(spacing: 16) {
-                        // Try Face ID button (if biometric is available)
-                        if biometricService.isAvailable {
-                            Button(action: {
-                                attemptBiometricAuthentication()
-                            }) {
-                                HStack(spacing: 12) {
-                                    Image(systemName: biometricService.biometricIcon)
-                                        .font(.system(size: 20, weight: .semibold))
-                                    
-                                    Text("Try \(biometricService.biometricTypeString)")
-                                        .font(.system(size: 18, weight: .semibold))
-                                }
-                                .foregroundColor(.nepBlue)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 56)
-                                .background(Color.nepBlue.opacity(0.1))
-                                .cornerRadius(28)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 28)
-                                        .stroke(Color.nepBlue, lineWidth: 2)
-                                )
-                            }
-                        }
-                        
-                        Button(action: {
-                            // Navigate to registration
-                            withAnimation(.easeInOut(duration: 0.5)) {
-                                isLoggedIn = true
-                            }
-                        }) {
-                            Text("Become a Customer")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundColor(.nepTextPrimary)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 56)
-                                .background(Color.white)
-                                .cornerRadius(28)
-                                .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
-                        }
-                        
-                        Button(action: {
-                            // Navigate to login - go directly to main view
-                            withAnimation(.easeInOut(duration: 0.5)) {
-                                isLoggedIn = true
-                                isOnboardingComplete = true
-                            }
-                        }) {
-                            Text("I'm Already a Customer")
-                                .font(.system(size: 20, weight: .medium))
-                                .foregroundColor(.white.opacity(0.8))
-                                .bold()
-                        }
-                    }
-                    .padding(.horizontal, 32)
-                    .padding(.bottom, 50)
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .bottom).combined(with: .opacity),
-                        removal: .move(edge: .bottom).combined(with: .opacity)
-                    ))
-                }
             }
-        }
-        .onAppear {
-            startAnimationSequence()
-        }
-        .onChange(of: biometricService.isAuthenticated) { isAuthenticated in
-            if isAuthenticated {
-                // Face ID successful, go directly to main view
-                withAnimation(.easeInOut(duration: 0.5)) {
-                    isLoggedIn = true
-                    isOnboardingComplete = true
+            .onAppear {
+                startAnimationSequence()
+            }
+            .onChange(of: biometricService.isAuthenticated) { isAuthenticated in
+                if isAuthenticated {
+                    // Face ID successful, go directly to main view
+                    withAnimation(.easeInOut(duration: 0.5)) {
+                        isLoggedIn = true
+                        isOnboardingComplete = true
+                    }
                 }
             }
         }
@@ -216,29 +212,29 @@ struct WelcomeView: View {
             }
         }
     }
-}
-
-struct GridPattern: View {
-    var body: some View {
-        GeometryReader { geometry in
-            Path { path in
-                let width = geometry.size.width
-                let height = geometry.size.height
-                let spacing: CGFloat = 20
-                
-                // Vertical lines
-                for i in stride(from: 0, through: width, by: spacing) {
-                    path.move(to: CGPoint(x: i, y: 0))
-                    path.addLine(to: CGPoint(x: i, y: height))
+    
+    struct GridPattern: View {
+        var body: some View {
+            GeometryReader { geometry in
+                Path { path in
+                    let width = geometry.size.width
+                    let height = geometry.size.height
+                    let spacing: CGFloat = 20
+                    
+                    // Vertical lines
+                    for i in stride(from: 0, through: width, by: spacing) {
+                        path.move(to: CGPoint(x: i, y: 0))
+                        path.addLine(to: CGPoint(x: i, y: height))
+                    }
+                    
+                    // Horizontal lines
+                    for i in stride(from: 0, through: height, by: spacing) {
+                        path.move(to: CGPoint(x: 0, y: i))
+                        path.addLine(to: CGPoint(x: width, y: i))
+                    }
                 }
-                
-                // Horizontal lines
-                for i in stride(from: 0, through: height, by: spacing) {
-                    path.move(to: CGPoint(x: 0, y: i))
-                    path.addLine(to: CGPoint(x: width, y: i))
-                }
+                .stroke(Color.nepBlue.opacity(0.1), lineWidth: 0.5)
             }
-            .stroke(Color.nepBlue.opacity(0.1), lineWidth: 0.5)
         }
     }
 }
