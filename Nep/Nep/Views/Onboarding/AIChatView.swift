@@ -1,5 +1,6 @@
 import SwiftUI
 import AVFoundation
+import Speech
 
 struct AIChatView: View {
     @StateObject private var geminiService = GeminiAIService.shared
@@ -18,6 +19,13 @@ struct AIChatView: View {
     @State private var typingText = ""
     @State private var currentTypingMessage = ""
     @State private var isTextFieldFocused = false
+    @State private var hasVoicePermission = false
+    @State private var showVoicePermissionAlert = false
+    @State private var showTemporaryError = false
+    @State private var temporaryErrorMessage = ""
+    
+    // Voice recognition manager
+    @StateObject private var speechManager = SpeechRecognizerManager()
     
     let ocrResults: OCRResults
     let onDataConfirmed: (OCRResults) -> Void
@@ -141,9 +149,30 @@ struct AIChatView: View {
                 // Bottom control bar
                 bottomControlBar
             }
+            
+            // Temporary error message overlay
+            if showTemporaryError {
+                VStack {
+                    Spacer()
+                    Text(temporaryErrorMessage)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.red.opacity(0.9))
+                        )
+                        .padding(.bottom, 100)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+                .animation(.easeInOut(duration: 0.3), value: showTemporaryError)
+            }
         }
         .onAppear {
             startConversation()
+            setupSpeechManager()
+            checkVoicePermission()
         }
         .fullScreenCover(isPresented: $showPhotoCapture) {
             PhotoCaptureView { photo in
@@ -168,6 +197,16 @@ struct AIChatView: View {
                 }
             )
         }
+        .alert("Permiso de Voz", isPresented: $showVoicePermissionAlert) {
+            Button("Configuración") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button("Cancelar", role: .cancel) {}
+        } message: {
+            Text("Se requiere permiso para usar el reconocimiento de voz. Por favor, habilítalo en la configuración.")
+        }
     }
     
     private var bottomControlBar: some View {
@@ -177,8 +216,12 @@ struct AIChatView: View {
                 Button(action: {
                     // Switch to voice mode
                     print("DEBUG: Voice mode button tapped")
-                    isListening = true
-                    startListening()
+                    if hasVoicePermission {
+                        isListening = true
+                        startListening()
+                    } else {
+                        showVoicePermissionAlert = true
+                    }
                 }) {
                     Image(systemName: "mic.fill")
                         .font(.system(size: 16, weight: .medium))
@@ -237,7 +280,11 @@ struct AIChatView: View {
                     sendMessage()
                 } else {
                     print("DEBUG: No message, starting to listen...")
-                    startListening()
+                    if hasVoicePermission {
+                        startListening()
+                    } else {
+                        showVoicePermissionAlert = true
+                    }
                 }
             }) {
                 ZStack {
@@ -565,31 +612,24 @@ struct AIChatView: View {
     }
     
     private func startListening() {
-        print("DEBUG: startListening() called")
+        print("🎙️ Iniciando grabación...")
+        currentMessage = ""
         isListening = true
-        print("DEBUG: isListening set to true")
         
-        // TODO: Implement real voice recognition
-        // For now, simulate voice input after 3 seconds for testing
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-            print("DEBUG: Simulating voice input after 3 seconds")
+        do {
+            try speechManager.startRecognition()
+        } catch {
+            print("❌ Error starting voice recognition: \(error.localizedDescription)")
             isListening = false
-            print("DEBUG: isListening set to false")
-            
-            // Simulate what the user said - put it in the text input field
-            let simulatedVoiceInput = "Los datos están correctos"
-            print("DEBUG: Simulated voice input: '\(simulatedVoiceInput)'")
-            currentMessage = simulatedVoiceInput
-            
-            // Add confirmation step before proceeding
-            addAIMessage("¿Estás seguro de que los datos están correctos? Responde 'sí' para continuar o 'no' para corregir.")
+            temporaryErrorMessage = "Error al iniciar el reconocimiento de voz"
+            showTemporaryError = true
         }
     }
     
     private func stopListening() {
-        print("DEBUG: stopListening() called")
+        print("⏹️ Deteniendo grabación...")
         isListening = false
-        print("DEBUG: isListening set to false")
+        speechManager.stopRecognition()
     }
     
     private func sendMessage() {
@@ -681,6 +721,56 @@ struct AIChatView: View {
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
             showWelcomeScreen = true
+        }
+    }
+    
+    // MARK: - Speech Manager Setup
+    private func setupSpeechManager() {
+        speechManager.onTranscriptionUpdate = { text in
+            DispatchQueue.main.async {
+                currentMessage = text
+            }
+        }
+        
+        speechManager.onError = { error in
+            DispatchQueue.main.async {
+                // Only show temporary error for "No speech detected"
+                if error.contains("No speech detected") {
+                    showTemporaryError("No se detectó voz. Por favor, intenta de nuevo.")
+                } else {
+                    temporaryErrorMessage = error
+                    showTemporaryError = true
+                }
+            }
+        }
+        
+        speechManager.onTranscriptionComplete = { text in
+            DispatchQueue.main.async {
+                currentMessage = text
+                sendMessage()
+            }
+        }
+    }
+    
+    private func checkVoicePermission() {
+        SFSpeechRecognizer.requestAuthorization { status in
+            DispatchQueue.main.async {
+                hasVoicePermission = status == .authorized
+            }
+        }
+    }
+    
+    private func showTemporaryError(_ message: String) {
+        temporaryErrorMessage = message
+        withAnimation {
+            showTemporaryError = true
+        }
+        
+        // Hide the error message after 3 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            withAnimation {
+                self.showTemporaryError = false
+            }
         }
     }
 }

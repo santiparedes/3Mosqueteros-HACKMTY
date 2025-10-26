@@ -92,6 +92,27 @@ class GeminiAIService: ObservableObject {
         }
     }
     
+    // MARK: - General Banking Conversation
+    func processBankingConversation(_ userInput: String, conversationHistory: [ConversationMessage]) async -> String {
+        print("🤖 GEMINI: Processing banking conversation...")
+        
+        guard APIConfig.isGeminiConfigured else {
+            print("❌ GEMINI: API not configured. Using fallback response.")
+            return "Lo siento, no puedo ayudarte en este momento. Por favor, contacta con soporte al cliente."
+        }
+        
+        let prompt = createBankingConversationPrompt(userInput: userInput, conversationHistory: conversationHistory)
+        
+        do {
+            let response = try await sendGeminiRequest(prompt: prompt)
+            print("✅ GEMINI: Banking conversation response generated")
+            return response
+        } catch {
+            print("❌ GEMINI: Error processing banking conversation: \(error)")
+            return "Lo siento, no pude procesar tu consulta. ¿Podrías repetir o ser más específico?"
+        }
+    }
+    
     // MARK: - Data Correction Processing
     func processDataCorrection(_ userInput: String, currentData: OCRResults) async -> DataCorrectionResponse {
         print("🤖 GEMINI: Processing data correction request...")
@@ -246,6 +267,41 @@ class GeminiAIService: ObservableObject {
             "nextAction": "continue|repeat|confirm|error",
             "requiresConfirmation": boolean
         }
+        """
+    }
+    
+    private func createBankingConversationPrompt(userInput: String, conversationHistory: [ConversationMessage]) -> String {
+        let historyText = conversationHistory.isEmpty ? "Primera interacción" : 
+            conversationHistory.suffix(5).map { "\($0.isUser ? "Usuario" : "Asistente"): \($0.text)" }.joined(separator: "\n")
+        
+        return """
+        Eres un asistente virtual de NEP, un banco digital innovador que utiliza tecnología cuántica para la seguridad. 
+        Eres amigable, profesional y conoces todos los servicios bancarios disponibles.
+        
+        Servicios de NEP:
+        - NepPay: Pagos rápidos y seguros
+        - Quantum Wallet: Billetera protegida con criptografía post-cuántica
+        - Transferencias instantáneas
+        - Consulta de saldo y transacciones
+        - Puntuación de crédito
+        - Verificación de encriptación
+        - Soporte 24/7
+        
+        Historial de conversación reciente:
+        \(historyText)
+        
+        Consulta del usuario: "\(userInput)"
+        
+        Responde de manera natural, útil y específica sobre los servicios bancarios. Si el usuario:
+        - Pregunta sobre servicios: Explica claramente las características
+        - Necesita ayuda técnica: Proporciona pasos específicos
+        - Quiere realizar transacciones: Guía sobre cómo hacerlo
+        - Tiene dudas de seguridad: Explica las medidas de protección cuántica
+        - Pide información general: Sé informativo pero conciso
+        
+        Mantén un tono profesional pero amigable. Si no tienes información específica, sugiere contactar soporte.
+        
+        Responde directamente en texto natural, sin formato JSON.
         """
     }
     
