@@ -25,14 +25,9 @@ struct WelcomeView: View {
                 VStack(spacing: 20) {
                     // NEP Text with custom font
                     if showNEP {
-                        Text("Nep")
-                            .font(.custom("BrunoACESC-regular", size: 48))
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                            .transition(.asymmetric(
-                                insertion: .scale(scale: 0.5).combined(with: .opacity),
-                                removal: .scale(scale: 0.5).combined(with: .opacity)
-                            ))
+                        Image("NEP")
+                            .frame(width: 40, height: 40)
+                        
                     }
                     
                     // Star logo
